@@ -252,7 +252,7 @@ export const insertDataRLTigaTitikSepuluh = async (req, res) => {
       const now = new Date();
       const date = now.getDate();
       return {
-        tahun: `${req.body.tahun}-${req.body.bulan}-${date}`,
+        tahun: `${req.body.tahun}-${req.body.bulan}-01`,
         bulan: req.body.bulan,
         rs_id: req.user.satKerId,
         rl_tiga_titik_sepuluh_id: rlInsertHeader.id,
