@@ -21,6 +21,8 @@
     "joi": "^17.4.1",
     "jsonwebtoken": "^9.0.0",
     "mysql2": "^2.3.3",
+    "nodemailer": "^7.0.3",
+    "nodemailer-smtp-transport": "^2.7.4",
     "password-validator": "^5.3.0",
     "sequelize": "^6.28.0"
   }

@@ -729,7 +729,7 @@ export const loginadmin = (req, res) => {
         "nama",
         "email",
         "password",
-        "rs_id",
+        "satker_id",
         "created_at",
         "modified_at",
       ],

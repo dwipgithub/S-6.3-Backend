@@ -10,6 +10,7 @@ import {
   loginSSOAdmin,
   logout,
   changePassword,
+  loginadmin,
 } from "../controllers/UsersController.js";
 import { verifyToken } from "../middleware/VerifyToken.js";
 import { verifyCsrfToken } from "../middleware/VerifyCsrfToken.js";
@@ -320,6 +321,10 @@ import { getRLLimatitikTiga } from "../controllers/RLLimaTitikTigaController.js"
 // Absensi
 
 import { insertValidasi } from "../controllers/ValidasiController.js";
+import { getApiRegistrations, insertApiRegistration, userVerifApiRegistration } from "../controllers/ApiRegistrationController.js";
+import { getApiKeyDevelopment, reviewRegistration } from "../controllers/ApiKeyDevelopmentController.js";
+import { insertApiProductionRequest } from "../controllers/ApiProductionRequestControlller.js";
+import { reviewProductionRequest } from "../controllers/ApiKeyProductionController.js";
 
 const router = express.Router();
 
@@ -327,12 +332,13 @@ const router = express.Router();
 router.post("/apisirs6v2/validasi", verifyToken, insertValidasi);
 
 // Token
-// router.post("/apisirs6v2/login", login);
+router.post("/apisirs6v2/login", login);
+router.post("/apisirs6v2/loginadmin", loginadmin);
 router.delete("/apisirs6v2/logout", verifyCsrfToken, logout);
 router.get("/apisirs6v2/token", refreshToken);
 
-router.get("/apisirs6v2/login", loginSSO);
-router.get("/apisirs6v2/loginadmin", loginSSOAdmin);
+// router.get("/apisirs6v2/login", loginSSO);
+// router.get("/apisirs6v2/loginadmin", loginSSOAdmin);
 
 // Absensi
 router.get("/apisirs6v2/absensi", verifyToken, getAbsensi);
@@ -1118,4 +1124,27 @@ router.get("/apisirs6v2/rllimatitikdua", verifyToken, getRLLimaTitikDua);
 // RL 5.3
 router.get("/apisirs6v2/rllimatitiktiga", verifyToken, getRLLimatitikTiga);
 
+
+
+
+// User & Admin Registrasi API
+router.get("/apisirs6v2/apiregistration", verifyToken, getApiRegistrations);
+router.get("/apisirs6v2/apikeydevelopment", verifyToken, getApiKeyDevelopment);
+
+
+// User Registrasi API
+router.post("/apisirs6v2/apiregistration", verifyToken, insertApiRegistration);
+router.get("/apisirs6v2/apiregistration/verifikasiemail/:token",verifyToken, userVerifApiRegistration);
+router.post("/apisirs6v2/apiproductionrequest/:apiKeyDevelopmentId", verifyToken, insertApiProductionRequest);
+
+
+//Admin Registration API\
+router.post("/apisirs6v2/apiregistration/review/:registrationId",  verifyToken,reviewRegistration);
+router.post("/apisirs6v2/apiproductionrequest/review/:productionRequestId",  verifyToken,reviewProductionRequest);
+
+
+// router.get("/apisirs6v2/apiproductionrequest", verifyToken, getApiProductionRequest);
+// router.get("/apisirs6v2/apiproductionreview", verifyToken, getApiProductionRequestReview);
+// router.post("/apisirs6v2/apiproductionrequest", verifyToken, insertApiProductionRequest);
+// router.post("/apisirs6v2/apiproductionreview", verifyToken, insertApiProductionRequestReview);
 export default router;
