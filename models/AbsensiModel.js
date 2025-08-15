@@ -5,6 +5,7 @@ export const get = (req, callback) => {
     const sqlSelect = 'SELECT ' +
         'rs_id, ' +
         'nama_rs, ' +
+        'kab_kota.nama as kab_kota, ' +
         'rl_31_bulan_1, ' +
         'rl_31_bulan_2, ' +
         'rl_31_bulan_3, ' +
@@ -230,7 +231,7 @@ export const get = (req, callback) => {
         'rl_53_bulan_12 '
     
     const sqlFrom = 'FROM ' +
-        'absensi '
+        'absensi INNER JOIN kab_kota ON kab_kota.id = absensi.kab_kota_id '
 
     const sqlWhere = 'WHERE '
 
@@ -244,17 +245,17 @@ export const get = (req, callback) => {
     const namaRS = req.query.namaRS || null
 
     if (provinsiId != null) {
-        filter.push("provinsi_id IN (?) ")
+        filter.push("absensi.provinsi_id IN (?) ")
         sqlFilterValue.push(req.query.provinsiId)
     }
 
     if (kabKotaId != null) {
-        filter.push("kab_kota_id IN (?) ")
+        filter.push("absensi.kab_kota_id IN (?) ")
         sqlFilterValue.push(req.query.kabKotaId)
     }
 
     if (namaRS != null) {
-        filter.push("nama_rs like ?")
+        filter.push("absensi.nama_rs like ?")
         sqlFilterValue.push('%'.concat(namaRS).concat('%'))
     }
 
