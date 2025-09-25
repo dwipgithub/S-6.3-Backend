@@ -74,6 +74,10 @@ export const rlTigaTitikDuaDetail = databaseSIRS.define('rl_tiga_titik_dua_detai
 
 export const get = (req, callback) => {
     const sqlSelect = ' SELECT ' +
+        'sirs_6_2.rl_tiga_titik_dua_detail.rs_id,' +
+        'db_fasyankes.`data`.RUMAH_SAKIT,' +
+        'kab_kota.nama,' +
+        'rl_tiga_titik_dua_detail.periode, ' +
         'rl_tiga_titik_dua_kelompok_jenis_pelayanan.nama AS nama_kelompok_jenis_pelayanan, ' +
         'SUM(' +
         'rl_tiga_titik_dua_detail.rincian_hari_perawatan_kelas_VVIP + ' +
@@ -145,19 +149,35 @@ export const get = (req, callback) => {
         'INNER JOIN rl_tiga_titik_dua_jenis_pelayanan ' +
         'ON rl_tiga_titik_dua_jenis_pelayanan.id = rl_tiga_titik_dua_detail.rl_tiga_titik_dua_jenis_pelayanan_id ' +
         'INNER JOIN rl_tiga_titik_dua_kelompok_jenis_pelayanan ' +
-        'ON rl_tiga_titik_dua_kelompok_jenis_pelayanan.id = rl_tiga_titik_dua_jenis_pelayanan.rl_tiga_titik_dua_kelompok_jenis_pelayanan_id '
+        'ON rl_tiga_titik_dua_kelompok_jenis_pelayanan.id = rl_tiga_titik_dua_jenis_pelayanan.rl_tiga_titik_dua_kelompok_jenis_pelayanan_id ' +
+        'INNER JOIN db_fasyankes.`data` ON rl_tiga_titik_dua_detail.rs_id = db_fasyankes.`data`.Propinsi ' +
+    	'INNER JOIN kab_kota ON db_fasyankes.`data`.kab_kota_id = kab_kota.id '
 
     const sqlWhere = 'WHERE '
 
-    const sqlGroup = 'GROUP BY rl_tiga_titik_dua_jenis_pelayanan.rl_tiga_titik_dua_kelompok_jenis_pelayanan_id, rl_tiga_titik_dua_detail.periode '
+    const sqlGroup = 'GROUP BY rl_tiga_titik_dua_detail.rs_id, rl_tiga_titik_dua_jenis_pelayanan.rl_tiga_titik_dua_kelompok_jenis_pelayanan_id, rl_tiga_titik_dua_detail.periode '
 
     const sqlOrder = 'ORDER BY rl_tiga_titik_dua_detail.rs_id'
+
+
 
     const filter = []
     const sqlFilterValue = []
 
+    const provId = req.query.provId || null
+    const KabKotId = req.query.KabKotId || null
     const rsId = req.query.rsId || null
     const periode = req.query.periode || null
+
+    if (provId != null) {
+        filter.push("db_fasyankes.`data`.provinsi_id IN ( ? ) ")
+        sqlFilterValue.push(req.query.provId.split(';'))
+    }
+
+    if (KabKotId != null) {
+        filter.push("db_fasyankes.`data`.kab_kota_id IN ( ? ) ")
+        sqlFilterValue.push(req.query.KabKotId.split(';'))
+    }
 
     if (rsId != null) {
         filter.push("rl_tiga_titik_dua_detail.rs_id IN ( ? ) ")
