@@ -1,6 +1,8 @@
 import { DataTypes, QueryTypes } from "sequelize";
 import { databaseSIRS } from "../config/Database.js";
 import { IcdRLLimaTitikSatu } from "./IcdRLLimaTitikSatuModel.js";
+import { AgeGroups } from "./AgeGroups.js";
+import { satu_sehat_id } from "./UserModel.js";
 
 export const rlLimaTitikSatuHeader = databaseSIRS.define("rl_lima_titik_satu", {
   rs_id: {
@@ -204,6 +206,30 @@ export const rlLimaTitikSatuDetail = databaseSIRS.define(
   }
 );
 
+export const rlLimaTitikSatuSatuSehat = databaseSIRS.define(
+  "rl_lima_titik_satu_satusehat",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    organization_id: DataTypes.STRING,
+    periode: DataTypes.DATEONLY,
+    icd_10: DataTypes.STRING,
+    diagnosis: DataTypes.STRING,
+    age_id: DataTypes.STRING,
+    male_new_cases: DataTypes.INTEGER,
+    females_new_cases: DataTypes.INTEGER,
+    total_new_cases: DataTypes.INTEGER,
+    male_visits: DataTypes.INTEGER,
+    female_visits: DataTypes.INTEGER,
+    total_visits: DataTypes.INTEGER,
+    created_at: DataTypes.DATE,
+    modified_at: DataTypes.DATE,
+  }
+);
+
 rlLimaTitikSatuHeader.hasMany(rlLimaTitikSatuDetail, {
   foreignKey: "rl_lima_titik_satu_id",
 });
@@ -216,4 +242,15 @@ IcdRLLimaTitikSatu.hasMany(rlLimaTitikSatuDetail, {
 });
 rlLimaTitikSatuDetail.belongsTo(IcdRLLimaTitikSatu, {
   foreignKey: "icd_id",
+});
+
+// Satu AgesGroup bisa punya banyak RLLimaSatu
+AgeGroups.hasMany(rlLimaTitikSatuSatuSehat, { foreignKey: "age_id" });
+
+// RLLimaSatu punya satu AgesGroup
+rlLimaTitikSatuSatuSehat.belongsTo(AgeGroups, { foreignKey: "age_id" });
+
+rlLimaTitikSatuSatuSehat.belongsTo(satu_sehat_id, {
+  foreignKey: "organization_id",
+  targetKey: "organization_id",
 });

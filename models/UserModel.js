@@ -73,6 +73,48 @@ export const users_sso = databaseSIRS.define(
   }
 );
 
+export const satu_sehat_id = databaseSIRS.define(
+  "satu_sehat_id",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    kode_baru_faskes: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true, // asumsi kode unik
+    },
+    secret_key: {
+      type: DataTypes.STRING,
+    },
+    client_id: {
+      type: DataTypes.STRING,
+    },
+    organization_id: {
+      type: DataTypes.STRING,
+    },
+    sim_pengembang_id: {
+      type: DataTypes.INTEGER,
+    },
+    sim_pengembang_nama: {
+      type: DataTypes.STRING,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+    },
+    modified_at: {
+      type: DataTypes.DATE,
+    },
+  },
+  {
+    tableName: "satu_sehat_id",
+    timestamps: false, // karena kamu pakai manual created_at & modified_at
+    underscored: true, // kalau nama kolom pakai underscore
+  }
+);
+
 export const show = (req, callback) => {
   const sql =
     "SELECT users.id, " +
@@ -114,3 +156,14 @@ export const insert = (data, callback) => {
       callback(error, null);
     });
 };
+
+users_sso.hasOne(satu_sehat_id, {
+  foreignKey: "kode_baru_faskes", // key di satu_sehat_id
+  sourceKey: "rs_id", // key di users_sso yang kita join-kan
+  as: "satuSehat", // alias association
+});
+
+satu_sehat_id.belongsTo(users_sso, {
+  foreignKey: "kode_baru_faskes",
+  targetKey: "rs_id",
+});

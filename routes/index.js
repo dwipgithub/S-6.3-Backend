@@ -43,6 +43,8 @@ import {
   insertDataRLTigaTitikEmpat,
   updateDataRLTigaTitikEmpat,
   deleteDataRLTigaTitikEmpat,
+  getDataRLTigaTitikEmpatSatuSehat,
+  getDataRLTigaTitikEmpatSatusehatLocal,
 } from "../controllers/RLTigaTitikEmpatController.js";
 
 // RL 3.5
@@ -300,6 +302,10 @@ import {
   getDataRLLimaTitikSatuById,
   insertdataRLLimaTitikSatu,
   updateDataRLLimaTitikSatu,
+  getDataRLLimaTitikSatuSatuSehat,
+  getDataRLLimaTitikSatuSatuSehatShow,
+  getDataRLLimaTitikSatuSatuSehatShowPaging,
+  getMasterumursatusehat,
 } from "../controllers/RLLimaTitikSatuController.js";
 
 // RL 3.14
@@ -454,6 +460,18 @@ router.patch(
   verifyCsrfToken,
   verifyToken,
   updateDataRLTigaTitikEmpat
+);
+
+router.get(
+  "/apisirs6v2/rltigatitikempatsatusehat",
+  verifyToken,
+  getDataRLTigaTitikEmpatSatuSehat
+);
+
+router.get(
+  "/apisirs6v2/getDataRLTigaTitikEmpatSatusehatLocal",
+  verifyToken,
+  getDataRLTigaTitikEmpatSatusehatLocal
 );
 
 // Jenis Kegiatan
@@ -1110,6 +1128,30 @@ router.delete(
   verifyCsrfToken,
   verifyToken,
   deleteDataRLLimaTitikSatu
+);
+
+router.get(
+  "/apisirs6v2/rllimatitiksatusatusehat",
+  verifyToken,
+  getDataRLLimaTitikSatuSatuSehat
+);
+
+router.get(
+  "/apisirs6v2/rllimatitiksatusatusehatshow",
+  verifyToken,
+  getDataRLLimaTitikSatuSatuSehatShow
+);
+
+router.get(
+  "/apisirs6v2/rllimatitiksatusatusehatpage",
+  verifyToken,
+  getDataRLLimaTitikSatuSatuSehatShowPaging
+);
+
+router.get(
+  "/apisirs6v2/getMasterumursatusehat",
+  verifyToken,
+  getMasterumursatusehat
 );
 
 // RL 5.3
