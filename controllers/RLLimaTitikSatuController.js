@@ -5,6 +5,7 @@ import joiDate from "@joi/date";
 import {
   rlLimaTitikSatuDetail,
   rlLimaTitikSatuHeader,
+  rlLimaTitikSatuSatuSehat
 } from "../models/RLLimaTitikSatuModel.js";
 import { satu_sehat_id, users_sso } from "../models/UserModel.js";
 import axios from "axios";
@@ -791,62 +792,7 @@ export const getDataRLLimaTitikSatuSatuSehat = async (req, res) => {
           },
         }
       );
-
-      // const response = {
-      //   data: {
-      //     records: [
-      //       {
-      //         icd10: "I10",
-      //         diagnosis: "Essential (primary) hypertension",
-      //         new_cases: [
-      //           {
-      //             age_id: "001",
-      //             age_name: "< 1 jam",
-      //             male_new_cases: 20,
-      //             female_new_cases: 22,
-      //           },
-      //           {
-      //             age_id: "002",
-      //             age_name: "1 jam - < 24 jam",
-      //             male_new_cases: 10,
-      //             female_new_cases: 12,
-      //           },
-      //         ],
-      //         male_new_cases: 30,
-      //         female_new_cases: 34,
-      //         total_new_cases: 64,
-      //         male_visits: 100,
-      //         female_visits: 200,
-      //         total_visits: 300,
-      //       },
-      //       {
-      //         icd10: "E11",
-      //         diagnosis: "Type 2 diabetes mellitus",
-      //         new_cases: [
-      //           {
-      //             age_id: "003",
-      //             age_name: "1-4 tahun",
-      //             male_new_cases: 2,
-      //             female_new_cases: 3,
-      //           },
-      //         ],
-      //         male_new_cases: 2,
-      //         female_new_cases: 3,
-      //         total_new_cases: 5,
-      //         male_visits: 4,
-      //         female_visits: 5,
-      //         total_visits: 9,
-      //       },
-      //     ],
-      //   },
-      // };
-
-      // console.log(response.data.data.records);
-
       const records = response.data?.data?.records;
-
-      // await delay(10000);
-
       // // SAVE DATA KE DB
       await saveRecords(records, organization_id, `${periodeget}-01`);
 
@@ -855,12 +801,6 @@ export const getDataRLLimaTitikSatuSatuSehat = async (req, res) => {
         message: "Data berhasil diambil dan disimpan",
         // data: responseData,
       });
-
-      // res.status(200).send({
-      //   status: true,
-      //   message: "data found",
-      //   data: response.data,
-      // });
     } catch (err) {
       console.log(err);
       // Kalau error dari axios (seperti 404)
@@ -882,12 +822,6 @@ export const getDataRLLimaTitikSatuSatuSehat = async (req, res) => {
           detail: "Error dari Satusehat",
         });
       }
-      // // Untuk error umum (misalnya timeout, DNS error, dll)
-      // return res.status(500).json({
-      //   status: false,
-      //   message: "Gagal mengambil data dari Satusehat",
-      //   detail: error.message,
-      // });
     }
   } else {
     return res.status(404).send({
@@ -1011,20 +945,6 @@ export const getDataRLLimaTitikSatuSatuSehatShow = async (req, res) => {
       message: "data found",
       data: result,
     });
-    // .then((results) => {
-    //   res.status(200).send({
-    //     status: true,
-    //     message: "data found",
-    //     data: results,
-    //   });
-    // })
-    // .catch((err) => {
-    //   res.status(422).send({
-    //     status: false,
-    //     message: err,
-    //   });
-    //   return;
-    // });
   } catch (err) {
     res.status(422).send({
       status: false,
