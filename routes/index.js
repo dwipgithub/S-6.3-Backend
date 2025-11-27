@@ -327,6 +327,8 @@ import { getRLLimatitikTiga } from "../controllers/RLLimaTitikTigaController.js"
 
 import { insertValidasi } from "../controllers/ValidasiController.js";
 
+import { getStatusSatset } from "../controllers/StatusSatset.js";
+
 const router = express.Router();
 
 // Validasi
@@ -360,6 +362,8 @@ router.get("/apisirs6v2/provinsi/:id", verifyToken, showProvinsi);
 // KabKota
 router.get("/apisirs6v2/kabkota", verifyToken, getKabKota);
 router.get("/apisirs6v2/kabkota/:id", verifyToken, showKabKota);
+
+router.get("/apisirs6v2/status-satset", verifyToken, getStatusSatset);
 
 // RL 3.1
 router.get("/apisirs6v2/rltigatitiksatu", verifyToken, getRLTigaTitikSatu);
