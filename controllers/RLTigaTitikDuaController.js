@@ -131,9 +131,9 @@ export const insertRLTigaTitikDua =  async (req, res) => {
             errorJumlahAlokasiTempatTidurAwalBulan = false
         }
 
-        if (jumlahHariPerawatan < element.jumlahLamaDirawat) {
-            errorPerbandinganJumlahHariPerawatan = true
-        }
+        // if (jumlahHariPerawatan < element.jumlahLamaDirawat) {
+        //     errorPerbandinganJumlahHariPerawatan = true
+        // }
 
         if (element.jumlahLamaDirawat < (parseInt(element.pasienAwalBulan) + parseInt(element.pasienMasuk) + parseInt(element.pasienPindahan))) {
             errorJumlahLamaDirawat = true
@@ -164,13 +164,13 @@ export const insertRLTigaTitikDua =  async (req, res) => {
         return
     }
 
-    if (errorPerbandinganJumlahHariPerawatan) {
-        res.status(400).send({
-            status: false,
-            message: 'jumlah hari perawatan tidak boleh lebih kecil dari jumlah lama dirawat'
-        })
-        return
-    }
+    // if (errorPerbandinganJumlahHariPerawatan) {
+    //     res.status(400).send({
+    //         status: false,
+    //         message: 'jumlah hari perawatan tidak boleh lebih kecil dari jumlah lama dirawat'
+    //     })
+    //     return
+    // }
 
     if (errorJumlahLamaDirawat) {
         res.status(400).send({
