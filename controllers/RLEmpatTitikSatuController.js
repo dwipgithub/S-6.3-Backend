@@ -313,16 +313,19 @@ export const insertDataRLEmpatTitikSatu = async (req, res) => {
     });
 
     if (dataDetail[0].total_pas_keluar_mati > dataDetail[0].total_pas_hidup_mati) {
+		await transaction.rollback();
       res.status(400).send({
         status: false,
         message: "Data Jumlah Pasien Mati Lebih Dari Jumlah Pasien Hidup/Mati",
       });
     } else if (dataDetail[0].jmlh_pas_keluar_mati_gen_l > dataDetail[0].jmlh_pas_hidup_mati_gen_l){
+		await transaction.rollback();
       res.status(400).send({
         status: false,
         message: "Data Jumlah Pasien Mati Laki-Laki Lebih Dari Jumlah Pasien Hidup/Mati Laki-Laki",
       });
     } else if (dataDetail[0].jmlh_pas_keluar_mati_gen_p > dataDetail[0].jmlh_pas_hidup_mati_gen_p){
+		await transaction.rollback();
       res.status(400).send({
         status: false,
         message: "Data Jumlah Pasien Mati Perempuan Lebih Dari Jumlah Pasien Hidup/Mati Perempuan",
@@ -495,8 +498,9 @@ export const insertDataRLEmpatTitikSatu = async (req, res) => {
           message: "Gagal Input Data.",
         });
       }
-      await transaction.rollback();
+      
     }
+	  await transaction.rollback();
   }
 };
 
