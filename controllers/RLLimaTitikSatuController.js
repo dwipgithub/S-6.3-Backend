@@ -70,11 +70,11 @@ export const getDataRLLimaTitikSatu = (req, res) => {
       // const plainResults = results.map(r => r.toJSON()); // <-- ini penting
       const jsonString = JSON.stringify(results);
       const size = Buffer.byteLength(jsonString, 'utf8');
-      console.log("Jummlah row  hasil query:", results.length);
 
       res.status(200).send({
         status: true,
         message: "data found",
+        length: results.length,
         size_bytes: size,
         size_kb: (size / 1024).toFixed(2),
         size_mb: (size / (1024 * 1024)).toFixed(2),
