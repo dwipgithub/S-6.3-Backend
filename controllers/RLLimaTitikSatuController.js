@@ -65,12 +65,12 @@ export const getDataRLLimaTitikSatu = (req, res) => {
       where: whereClause,
     })
     .then((results) => {
-      const jsonString = JSON.stringify(results);
+      const plainResults = results.map(r => r.toJSON()); // <-- ini penting
+      const jsonString = JSON.stringify(plainResults);
       res.status(200).send({
         status: true,
         message: "data found",
-        ukuran: Buffer.byteLength(jsonString, "utf8"),
-        data: results,
+        data: plainResults, // <-- kirim plain object
       });
     })
     .catch((err) => {
