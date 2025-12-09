@@ -63,6 +63,8 @@ export const getDataRLLimaTitikSatu = (req, res) => {
         ],
       },
       where: whereClause,
+      raw: true,
+      nest: true,
     })
     .then((results) => {
       const plainResults = results.map(r => r.toJSON()); // <-- ini penting
