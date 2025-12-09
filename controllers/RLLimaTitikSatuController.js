@@ -76,6 +76,7 @@ export const getDataRLLimaTitikSatu = (req, res) => {
       });
     })
     .catch((err) => {
+      console.error("SEQUELIZE ERROR:", err); // <-- log error ke console
       res.status(422).send({
         status: false,
         message: err,
