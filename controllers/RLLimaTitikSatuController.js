@@ -68,10 +68,15 @@ export const getDataRLLimaTitikSatu = (req, res) => {
     })
     .then((results) => {
       // const plainResults = results.map(r => r.toJSON()); // <-- ini penting
-      // const jsonString = JSON.stringify(results);
+      const jsonString = JSON.stringify(results);
+      const size = Buffer.byteLength(jsonString, 'utf8');
+
       res.status(200).send({
         status: true,
         message: "data found",
+        size_bytes: size,
+        size_kb: (size / 1024).toFixed(2),
+        size_mb: (size / (1024 * 1024)).toFixed(2),
         data: results, // <-- kirim plain object
       });
     })
