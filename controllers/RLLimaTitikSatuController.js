@@ -67,12 +67,12 @@ export const getDataRLLimaTitikSatu = (req, res) => {
       nest: true,
     })
     .then((results) => {
-      const plainResults = results.map(r => r.toJSON()); // <-- ini penting
-      const jsonString = JSON.stringify(plainResults);
+      // const plainResults = results.map(r => r.toJSON()); // <-- ini penting
+      // const jsonString = JSON.stringify(results);
       res.status(200).send({
         status: true,
         message: "data found",
-        data: plainResults, // <-- kirim plain object
+        data: results, // <-- kirim plain object
       });
     })
     .catch((err) => {
