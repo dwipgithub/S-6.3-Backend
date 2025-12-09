@@ -70,6 +70,7 @@ export const getDataRLLimaTitikSatu = (req, res) => {
       // const plainResults = results.map(r => r.toJSON()); // <-- ini penting
       const jsonString = JSON.stringify(results);
       const size = Buffer.byteLength(jsonString, 'utf8');
+      console.log("Jummlah row  hasil query:", results.length);
 
       res.status(200).send({
         status: true,
