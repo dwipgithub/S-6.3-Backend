@@ -963,7 +963,7 @@ export const getDataRLLimaTitikSatuSatuSehatShowPaging = async (req, res) => {
       .pattern(/^\d{4}-\d{2}$/)
       .required(), // format YYYY-MM
     page: joi.number().integer().min(1).default(1),
-    limit: joi.number().integer().min(1).max(100).default(100),
+    limit: joi.number().integer().min(1).max(20).default(20),
   });
 
   const { error, value } = schema.validate(req.query);
