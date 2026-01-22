@@ -13,7 +13,6 @@ import {
 } from "../controllers/UsersController.js";
 import { verifyToken } from "../middleware/VerifyToken.js";
 import { verifyCsrfToken } from "../middleware/VerifyCsrfToken.js";
-import { decrypt } from "../controllers/authController.js";
 import { refreshToken } from "../controllers/RefreshTokenController.js";
 
 // Absensi
@@ -1163,8 +1162,5 @@ router.get("/apisirs6v2/rllimatitikdua", verifyToken, getRLLimaTitikDua);
 
 // RL 5.3
 router.get("/apisirs6v2/rllimatitiktiga", verifyToken, getRLLimatitikTiga);
-
-// Decrypt Endpoint
-router.post("/apisirs6v2/decrypt", decrypt);
 
 export default router;

@@ -1,26 +1,17 @@
-import { decryptAESGCM } from "../services/cryptoService.js";
+import crypto from "crypto";
 
-export const decrypt = async (req, res) => {
-    try {
-        const decryptedPayload = decryptAESGCM({
-            iv: req.body.iv,
-            ciphertext: req.body.ciphertext,
-            tag: req.body.tag,
-            keyBase64: process.env.AES_KEY
-        });
+export function decryptAESGCM({ iv, ciphertext, tag, keyBase64 }) {
+    const key = Buffer.from(keyBase64, "base64");
+    const decipher = crypto.createDecipheriv(
+        "aes-256-gcm",
+        key,
+        Buffer.from(iv, "base64")
+    );
 
-        const data = JSON.parse(decryptedPayload);
+    decipher.setAuthTag(Buffer.from(tag, "base64"));
 
-        res.json({
-            status: "success",
-            data: data
-        });
+    let decrypted = decipher.update(ciphertext, "base64", "utf8");
+    decrypted += decipher.final("utf8");
 
-    } catch (err) {
-
-        res.status(400).json({
-            message: "Decrypt gagal"
-        });
-
-    }
-};
+    return decrypted;
+}
