@@ -6,7 +6,7 @@ import {
 } from "../models/RLTigaTitikEmpatModel.js";
 import Joi from "joi";
 import { RLTigaTitikEmpatSatusehat } from "../models/RLTigaTitikEmpatModel.js";
-import request from "request";
+import axios from "axios";
 import { satu_sehat_id, users_sso } from "../models/UserModel.js";
 import joiDate from "@joi/date";
 
@@ -103,97 +103,101 @@ export const getDataRLTigaTitikEmpatSatuSehat = async (req, res) => {
       },
     };
 
-    request(options, function (error, response) {
-      console.log("URL:", options.url);
+    try {
+      const response = await axios.get(url, {
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": apiKey,
+        },
+      });
+
+      console.log("URL:", url);
       console.log("Headers:", options.headers);
-      if (error) {
-        console.log("Request error:", error);
-        return res.status(500).json({
-          status: false,
-          message: "Gagal mengambil data dari Satusehat",
-          detail: error.message,
+      console.log("StatusCode:", response.status);
+      console.log("Response body:", response.data);
+
+      const data = response.data;
+
+      // Insert or update data RL 3.4 Satusehat
+      if (data && data.data && data.data.month) {
+        const payload = {
+          month: data.data.month,
+          organization_id: data.data.organization_id,
+          new_visitors: data.data.new_visitors,
+          returning_visitors: data.data.returning_visitors,
+          total_visitors: data.data.total_visitors,
+        };
+        console.log("Payload yang akan disimpan:", payload);
+        RLTigaTitikEmpatSatusehat.findOne({
+          where: {
+            month: payload.month,
+            organization_id: payload.organization_id,
+          },
+        }).then((existing) => {
+          if (existing) {
+            // update
+            existing
+              .update({
+                new_visitors: payload.new_visitors,
+                returning_visitors: payload.returning_visitors,
+                total_visitors: payload.total_visitors,
+              })
+              .then(() => {
+                console.log("Berhasil update rl_tiga_titik_empat_satusehat");
+              })
+              .catch((err) => {
+                console.log(
+                  "Gagal update rl_tiga_titik_empat_satusehat:",
+                  err
+                );
+              });
+          } else {
+            // insert
+            RLTigaTitikEmpatSatusehat.create(payload)
+              .then(() => {
+                console.log("Berhasil insert rl_tiga_titik_empat_satusehat");
+              })
+              .catch((err) => {
+                console.log(
+                  "Gagal insert rl_tiga_titik_empat_satusehat:",
+                  err
+                );
+              });
+          }
         });
       }
-      console.log("StatusCode:", response && response.statusCode);
-      console.log("Response body:", response && response.body);
-      try {
-        const data = JSON.parse(response.body);
-        if (response.statusCode === 404) {
+
+      return res.status(200).json({
+        status: true,
+        message: "data found",
+        data: data,
+      });
+    } catch (error) {
+      console.log("Request error:", error.message);
+      if (error.response) {
+        const statusCode = error.response.status;
+        const data = error.response.data;
+        if (statusCode === 404) {
           return res.status(404).json({
             status: false,
             message: data.message || "Not Found",
             detail: "Data tidak ditemukan dari API Satusehat",
           });
         }
-        if (response.statusCode >= 400) {
-          return res.status(response.statusCode).json({
+        if (statusCode >= 400) {
+          return res.status(statusCode).json({
             status: false,
             message: data.message || "Error dari Satusehat",
             detail: data.detail || null,
           });
         }
-        // Insert or update data RL 3.4 Satusehat
-        if (data && data.data && data.data.month) {
-          const payload = {
-            month: data.data.month,
-            organization_id: data.data.organization_id,
-            new_visitors: data.data.new_visitors,
-            returning_visitors: data.data.returning_visitors,
-            total_visitors: data.data.total_visitors,
-          };
-          console.log("Payload yang akan disimpan:", payload);
-          RLTigaTitikEmpatSatusehat.findOne({
-            where: {
-              month: payload.month,
-              organization_id: payload.organization_id,
-            },
-          }).then((existing) => {
-            if (existing) {
-              // update
-              existing
-                .update({
-                  new_visitors: payload.new_visitors,
-                  returning_visitors: payload.returning_visitors,
-                  total_visitors: payload.total_visitors,
-                })
-                .then(() => {
-                  console.log("Berhasil update rl_tiga_titik_empat_satusehat");
-                })
-                .catch((err) => {
-                  console.log(
-                    "Gagal update rl_tiga_titik_empat_satusehat:",
-                    err
-                  );
-                });
-            } else {
-              // insert
-              RLTigaTitikEmpatSatusehat.create(payload)
-                .then(() => {
-                  console.log("Berhasil insert rl_tiga_titik_empat_satusehat");
-                })
-                .catch((err) => {
-                  console.log(
-                    "Gagal insert rl_tiga_titik_empat_satusehat:",
-                    err
-                  );
-                });
-            }
-          });
-        }
-        return res.status(200).json({
-          status: true,
-          message: "data found",
-          data: data,
-        });
-      } catch (e) {
-        console.log("Parse error:", e);
-        return res.status(500).json({
-          status: false,
-          message: "Gagal parsing response dari Satusehat",
-          detail: e.message,
-        });
       }
-    });
+      return res.status(500).json({
+        status: false,
+        message: "Gagal mengambil data dari Satusehat",
+        detail: error.message,
+      });
+    }
   } catch (err) {
     return res.status(500).json({
       status: false,
