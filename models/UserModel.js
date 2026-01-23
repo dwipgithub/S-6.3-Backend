@@ -25,6 +25,9 @@ export const users = databaseSIRS.define(
     jenis_user_id: {
       type: DataTypes.STRING,
     },
+    validate: {
+      type: DataTypes.INTEGER,
+    },
     created_at: {
       type: DataTypes.DATE,
     },
@@ -34,7 +37,7 @@ export const users = databaseSIRS.define(
   },
   {
     freezeTableName: true,
-  }
+  },
 );
 
 export const users_sso = databaseSIRS.define(
@@ -61,6 +64,9 @@ export const users_sso = databaseSIRS.define(
     jenis_user_id: {
       type: DataTypes.STRING,
     },
+    validate: {
+      type: DataTypes.INTEGER,
+    },
     created_at: {
       type: DataTypes.DATE,
     },
@@ -70,7 +76,7 @@ export const users_sso = databaseSIRS.define(
   },
   {
     freezeTableName: true,
-  }
+  },
 );
 
 export const satu_sehat_id = databaseSIRS.define(
@@ -112,7 +118,7 @@ export const satu_sehat_id = databaseSIRS.define(
     tableName: "satu_sehat_id",
     timestamps: false, // karena kamu pakai manual created_at & modified_at
     underscored: true, // kalau nama kolom pakai underscore
-  }
+  },
 );
 
 export const show = (req, callback) => {
@@ -143,7 +149,7 @@ export const show = (req, callback) => {
 
 export const insert = (data, callback) => {
   const sqlInsert =
-    "INSERT INTO users (nama,email,password,satker_id,jenis_user_id,kriteria_user_id) VALUES ( ? )";
+    "INSERT INTO users (nama,email,password,satker_id,jenis_user_id, validate,kriteria_user_id) VALUES ( ? )";
   databaseSIRS
     .query(sqlInsert, {
       type: QueryTypes.INSERT,
