@@ -6,6 +6,10 @@ import jsonWebToken from "jsonwebtoken";
 import Joi from "joi";
 import passwordValidator from "password-validator";
 import { Sequelize } from "sequelize";
+import { decryptAESGCM } from "./authController.js";
+import { databaseSIRS } from "../config/Database.js";
+import { insertIfNotExist } from "../models/AbsensiModel.js";
+
 const Op = Sequelize.Op;
 
 export const getUser = (req, res) => {
@@ -132,7 +136,7 @@ export const login = async (req, res) => {
           const accessToken = jsonWebToken.sign(
             payloadObject,
             process.env.ACCESS_TOKEN_SECRET,
-            { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN }
+            { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN },
           );
           jsonWebToken.verify(
             accessToken,
@@ -141,7 +145,7 @@ export const login = async (req, res) => {
               const refreshToken = jsonWebToken.sign(
                 payloadObject,
                 process.env.REFRESH_TOKEN_SECRET,
-                { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN }
+                { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN },
               );
               users
                 .update(
@@ -150,14 +154,14 @@ export const login = async (req, res) => {
                     where: {
                       id: results[0].id,
                     },
-                  }
+                  },
                 )
                 .then(() => {
                   res.cookie("refreshToken", refreshToken, {
                     httpOnly: true,
-                    sameSite: 'Strict',
-                    secure: true, 
-                    maxAge: 6 * 60 * 60 * 1000
+                    sameSite: "Strict",
+                    secure: true,
+                    maxAge: 6 * 60 * 60 * 1000,
                   });
                   res.status(201).send({
                     status: true,
@@ -174,9 +178,9 @@ export const login = async (req, res) => {
                   });
                   return;
                 });
-            }
+            },
           );
-        }
+        },
       );
     })
     .catch((err) => {
@@ -271,118 +275,260 @@ export const login = async (req, res) => {
 
 export const loginSSO = async (req, res) => {
   const token = req.query.token;
+  const t = await databaseSIRS.transaction();
+
   try {
+    // const response = await axios.get(
+    //   "https://akun-yankes.kemkes.go.id/sso/v1/token?value=" +
+    //     token +
+    //     "&serviceProviderId=UfXjipowQNdlVoeU3lpE",
+    // );
+
     const response = await axios.get(
-      "https://akun-yankes.kemkes.go.id/sso/v1/token?value=" +
+      "http://202.70.136.86/sso/v1/token?value=" +
         token +
-        "&serviceProviderId=UfXjipowQNdlVoeU3lpE"
+        "&serviceProviderId=UfXjipowQNdlVoeU3lpE",
     );
 
-    // const response = await axios.get(
-    //   "http://192.168.50.86/sso/v1/token?value=" +
-    //     token +
-    //     "&serviceProviderId=UfXjipowQNdlVoeU3lpE"
-    // );
-    const email_sso = response.data.data.email;
+    const encryptedData = response.data.data;
 
-    users_sso
-      .findAll({
-        attributes: [
-          "id",
-          "nama",
-          "email",
-          "password",
-          "rs_id",
-          "jenis_user_id",
-          "created_at",
-          "modified_at",
-        ],
-        where: {
-          email: email_sso,
-          is_active: 1,
-        },
-      })
-      .then((results) => {
-        if (!results.length) {
-          res.status(404).send({
-            status: false,
-            message: "email not found",
-          });
-          return;
-        }
-        const payloadObject = {
-          id: results[0].id,
-          nama: results[0].nama,
-          email: results[0].email,
-          satKerId: results[0].rs_id,
-          jenisUserId: results[0].jenis_user_id,
-        };
-        const payloadObjectRefreshToken = {
-          id: results[0].id,
-        };
-        const accessToken = jsonWebToken.sign(
-          payloadObject,
-          process.env.ACCESS_TOKEN_SECRET,
-          { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN }
-        );
-        jsonWebToken.verify(
-          accessToken,
-          process.env.ACCESS_TOKEN_SECRET,
-          (err, result) => {
-            const refreshToken = jsonWebToken.sign(
-              payloadObjectRefreshToken,
-              process.env.REFRESH_TOKEN_SECRET,
-              { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN }
-            );
-            users_sso
-              .update(
-                { refresh_token: refreshToken },
-                {
-                  where: {
-                    id: results[0].id,
-                  },
-                }
-              )
-              .then(() => {
-                res.cookie("refreshToken", refreshToken, {
-                  httpOnly: true,
-                  sameSite: 'Strict',
-                  secure: true, 
-                  maxAge: 6 * 60 * 60 * 1000
-                });
-                const csrfToken = crypto.randomUUID();
-                res.cookie("XSRF-TOKEN", csrfToken, {
-                  httpOnly: true,
-                  sameSite: "Strict", // atau 'Lax' tergantung kebutuhan
-                  secure: true,
-                });
-                res.status(201).send({
-                  status: true,
-                  message: "access token created",
-                  data: {
-                    access_token: accessToken,
-                    csrfToken: csrfToken,
-                  },
-                });
-              })
-              .catch((err) => {
-                res.status(404).send({
-                  status: false,
-                  message: err,
-                });
-                return;
-              });
-          }
-        );
-      })
-      .catch((err) => {
-        res.status(404).send({
-          status: false,
-          message: err,
-        });
-        return;
+    const decryptedString = decryptAESGCM({
+      iv: encryptedData.iv,
+      ciphertext: encryptedData.ciphertext,
+      tag: encryptedData.tag,
+      keyBase64: process.env.AES_KEY,
+    });
+
+    if (!decryptedString) {
+      return res.status(401).json({
+        status: false,
+        message: "Invalid SSO token",
       });
+    }
+
+    const decrypted = JSON.parse(decryptedString);
+
+    const email_sso = decrypted.email;
+    const nama_sso = decrypted.name;
+    const org_sso = decrypted.organizationId;
+    const type_sso = decrypted.organizationType;
+    const org_name = decrypted.organizationName;
+
+    if (!email_sso || !org_sso) {
+      return res.status(400).json({
+        status: false,
+        message: "Invalid SSO payload",
+      });
+    }
+
+    let user = await users_sso.findOne({
+      where: {
+        email: email_sso,
+        rs_id: org_sso,
+        is_active: 1,
+      },
+    });
+
+    if (!type_sso) {
+      return res.status(400).json({
+        status: false,
+        message: "SSO category missing",
+      });
+    }
+
+    if (!user) {
+      let kategoriUser;
+
+      try {
+        kategoriUser = mapCategorySSO(type_sso);
+      } catch (err) {
+        return res.status(403).json({
+          status: false,
+          message: "SSO category not allowed",
+        });
+      }
+
+      user = await users_sso.create(
+        {
+          nama: nama_sso,
+          email: email_sso,
+          password: null,
+          rs_id: org_sso,
+          jenis_user_id: kategoriUser,
+          nama_rs: org_name ?? null,
+          validate: 1,
+          is_active: 1,
+          created_at: new Date(),
+        },
+        { transaction: t },
+      );
+
+      if (Number(type_sso) === 4) {
+        // Panggil helper
+        await insertIfNotExist(
+          { rs_id: org_sso, nama_rs: org_name ?? null },
+          t,
+        );
+      }
+
+      await t.commit();
+    }
+
+    const accessPayload = {
+      id: user.id,
+      nama: user.nama,
+      email: user.email,
+      satKerId: user.rs_id,
+      jenisUserId: user.jenis_user_id,
+    };
+
+    const refreshPayload = {
+      id: user.id,
+    };
+
+    const accessToken = jsonWebToken.sign(
+      accessPayload,
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN },
+    );
+
+    const refreshToken = jsonWebToken.sign(
+      refreshPayload,
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN },
+    );
+
+    await users_sso.update(
+      { refresh_token: refreshToken },
+      { where: { id: user.id } },
+    );
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: "Strict",
+      secure: true,
+      maxAge: 6 * 60 * 60 * 1000,
+    });
+
+    const csrfToken = crypto.randomUUID();
+    res.cookie("XSRF-TOKEN", csrfToken, {
+      httpOnly: false,
+      sameSite: "Strict",
+      secure: true,
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "SSO login success",
+      data: {
+        access_token: accessToken,
+        csrfToken,
+      },
+    });
+
+    // users_sso
+    //   .findAll({
+    //     attributes: [
+    //       "id",
+    //       "nama",
+    //       "email",
+    //       "password",
+    //       "rs_id",
+    //       "jenis_user_id",
+    //       "created_at",
+    //       "modified_at",
+    //     ],
+    //     where: {
+    //       email: email_sso,
+    //       rs_id: org_sso,
+    //       is_active: 1,
+    //     },
+    //   })
+    //   .then((results) => {
+    //     if (!results.length) {
+    //       res.status(404).send({
+    //         status: false,
+    //         message: "email not found",
+    //       });
+    //       return;
+    //     }
+    //     const payloadObject = {
+    //       id: results[0].id,
+    //       nama: results[0].nama,
+    //       email: results[0].email,
+    //       satKerId: results[0].rs_id,
+    //       jenisUserId: results[0].jenis_user_id,
+    //     };
+    //     const payloadObjectRefreshToken = {
+    //       id: results[0].id,
+    //     };
+    //     const accessToken = jsonWebToken.sign(
+    //       payloadObject,
+    //       process.env.ACCESS_TOKEN_SECRET,
+    //       { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN },
+    //     );
+    //     jsonWebToken.verify(
+    //       accessToken,
+    //       process.env.ACCESS_TOKEN_SECRET,
+    //       (err, result) => {
+    //         const refreshToken = jsonWebToken.sign(
+    //           payloadObjectRefreshToken,
+    //           process.env.REFRESH_TOKEN_SECRET,
+    //           { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN },
+    //         );
+    //         users_sso
+    //           .update(
+    //             { refresh_token: refreshToken },
+    //             {
+    //               where: {
+    //                 id: results[0].id,
+    //               },
+    //             },
+    //           )
+    //           .then(() => {
+    //             res.cookie("refreshToken", refreshToken, {
+    //               httpOnly: true,
+    //               sameSite: "Strict",
+    //               secure: true,
+    //               maxAge: 6 * 60 * 60 * 1000,
+    //             });
+    //             const csrfToken = crypto.randomUUID();
+    //             res.cookie("XSRF-TOKEN", csrfToken, {
+    //               httpOnly: true,
+    //               sameSite: "Strict", // atau 'Lax' tergantung kebutuhan
+    //               secure: true,
+    //             });
+    //             res.status(201).send({
+    //               status: true,
+    //               message: "access token created",
+    //               data: {
+    //                 access_token: accessToken,
+    //                 csrfToken: csrfToken,
+    //               },
+    //             });
+    //           })
+    //           .catch((err) => {
+    //             res.status(404).send({
+    //               status: false,
+    //               message: err,
+    //             });
+    //             return;
+    //           });
+    //       },
+    //     );
+    //   })
+    //   .catch((err) => {
+    //     res.status(404).send({
+    //       status: false,
+    //       message: err,
+    //     });
+    //     return;
+    //   });
   } catch (error) {
+    await t.rollback();
+
+    console.error("SSO LOGIN ERROR:", error);
+
     res.status(400).send({
       status: false,
       message: error.message,
@@ -390,6 +536,16 @@ export const loginSSO = async (req, res) => {
     return;
   }
 };
+
+function mapCategorySSO(category) {
+  const kategori = Number(category);
+
+  if (![1, 2, 3, 4, 99].includes(kategori)) {
+    throw new Error("INVALID_CATEGORY");
+  }
+
+  return kategori;
+}
 
 export const loginSSOAdmin = async (req, res) => {
   const token = req.query.token;
@@ -403,9 +559,9 @@ export const loginSSOAdmin = async (req, res) => {
     // );
 
     const response = await axios.get(
-      "http://192.168.50.86/sso/v1/token?value=" +
+      "http://202.70.136.86/sso/v1/token?value=" +
         token +
-        "&serviceProviderId=UfXjipowQNdlVoeU3lpE"
+        "&serviceProviderId=UfXjipowQNdlVoeU3lpE",
     );
 
     const email_sso = response.data.data.email;
@@ -453,7 +609,7 @@ export const loginSSOAdmin = async (req, res) => {
         const accessToken = jsonWebToken.sign(
           payloadObject,
           process.env.ACCESS_TOKEN_SECRET,
-          { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN }
+          { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN },
         );
         jsonWebToken.verify(
           accessToken,
@@ -462,7 +618,7 @@ export const loginSSOAdmin = async (req, res) => {
             const refreshToken = jsonWebToken.sign(
               payloadObjectRefreshToken,
               process.env.REFRESH_TOKEN_SECRET,
-              { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN }
+              { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN },
             );
             users
               .update(
@@ -471,7 +627,7 @@ export const loginSSOAdmin = async (req, res) => {
                   where: {
                     id: results[0].id,
                   },
-                }
+                },
               )
               .then(() => {
                 res.cookie("refreshToken", refreshToken, {
@@ -494,7 +650,7 @@ export const loginSSOAdmin = async (req, res) => {
                 });
                 return;
               });
-          }
+          },
         );
       })
       .catch((err) => {
@@ -523,8 +679,8 @@ export const logout = (req, res) => {
     return;
   }
   res.clearCookie("refreshToken");
-  res.clearCookie('XSRF-TOKEN')
-  res.clearCookie('connect.sid')
+  res.clearCookie("XSRF-TOKEN");
+  res.clearCookie("connect.sid");
   res.sendStatus(200);
 
   //   users_sso
@@ -595,7 +751,7 @@ export const insertUser = (req, res) => {
 
   const passwordValidationResults = schemaPasswordValidator.validate(
     req.body.password,
-    { details: true }
+    { details: true },
   );
   if (passwordValidationResults.length) {
     res.status(400).send({
@@ -673,7 +829,7 @@ export const changePassword = async (req, res) => {
 
     const compareResult = await bcrypt.compare(
       req.body.passwordLama,
-      passwordLama.dataValues.password
+      passwordLama.dataValues.password,
     );
     if (!compareResult) {
       res.status(404).json({
@@ -694,7 +850,7 @@ export const changePassword = async (req, res) => {
         where: {
           id: req.params.id,
         },
-      }
+      },
     );
     res.status(200).json({
       status: true,
@@ -770,7 +926,7 @@ export const loginadmin = (req, res) => {
           const accessToken = jsonWebToken.sign(
             payloadObject,
             process.env.ACCESS_TOKEN_SECRET,
-            { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN }
+            { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN },
           );
           jsonWebToken.verify(
             accessToken,
@@ -779,7 +935,7 @@ export const loginadmin = (req, res) => {
               const refreshToken = jsonWebToken.sign(
                 payloadObject,
                 process.env.REFRESH_TOKEN_SECRET,
-                { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN }
+                { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN },
               );
               users
                 .update(
@@ -788,7 +944,7 @@ export const loginadmin = (req, res) => {
                     where: {
                       id: results[0].id,
                     },
-                  }
+                  },
                 )
                 .then(() => {
                   res.cookie("refreshToken", refreshToken, {
@@ -811,9 +967,9 @@ export const loginadmin = (req, res) => {
                   });
                   return;
                 });
-            }
+            },
           );
-        }
+        },
       );
     })
     .catch((err) => {
@@ -848,7 +1004,7 @@ export const logoutadmin = (req, res) => {
             where: {
               id: results[0].id,
             },
-          }
+          },
         )
         .then((resultsUpdate) => {
           res.clearCookie("refreshToken");
