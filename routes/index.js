@@ -161,7 +161,7 @@ import {
   getDataRLTigaTitikDuaValidasi,
   insertDataRLTigaTitikDuaValidasi,
   updateDataRLTigaTitikDuaValidasi,
-} from "../controllers/RLtigaTitikDuaValidasiController.js";
+} from "../controllers/RLTigaTitikDuaValidasiController.js";
 
 // RL 3.3 validasi
 
