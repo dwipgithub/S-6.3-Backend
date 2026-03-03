@@ -169,13 +169,13 @@ import {
   getDataRLTigaTitikTigaValidasi,
   insertDataRLTigaTitikTigaValidasi,
   updateDataRLTigaTitikTigaValidasi,
-} from "../controllers/RLtigaTitikTigaValidasiController.js";
+} from "../controllers/RLTigaTitikTigaValidasiController.js";
 
 import {
   getDataRLTigaTitikEmpatValidasi,
   insertDataRLTigaTitikEmpatValidasi,
   updateDataRLTigaTitikEmpatValidasi,
-} from "../controllers/RLtigaTitikEmpatValidasiController.js";
+} from "../controllers/RLTigaTitikEmpatValidasiController.js";
 
 import {
   getDataRLTigaTitikLimaValidasi,
@@ -187,25 +187,25 @@ import {
   getDataRLTigaTitikEnamValidasi,
   insertDataRLTigaTitikEnamValidasi,
   updateDataRLTigaTitikEnamValidasi,
-} from "../controllers/RLtigaTitikEnamValidasiController.js";
+} from "../controllers/RLTigaTitikEnamValidasiController.js";
 
 import {
   getDataRLTigaTitikTujuhValidasi,
   insertDataRLTigaTitikTujuhValidasi,
   updateDataRLTigaTitikTujuhValidasi,
-} from "../controllers/RLtigaTitikTujuhValidasiController.js";
+} from "../controllers/RLTigaTitikTujuhValidasiController.js";
 
 import {
   getDataRLTigaTitikDelapanValidasi,
   insertDataRLTigaTitikDelapanValidasi,
   updateDataRLTigaTitikDelapanValidasi,
-} from "../controllers/RLtigaTitikDelapanValidasiController.js";
+} from "../controllers/RLTigaTitikDelapanValidasiController.js";
 
 import {
   getDataRLTigaTitikSembilanValidasi,
   insertDataRLTigaTitikSembilanValidasi,
   updateDataRLTigaTitikSembilanValidasi,
-} from "../controllers/RLtigaTitikSembilanValidasiController.js";
+} from "../controllers/RLTigaTitikSembilanValidasiController.js";
 
 //Jenis Kegiatan RL 3.9
 import { getDataJenisKegiatanTigaTitikSembilan } from "../controllers/RLTigaTitikSembilanJenisKegiatanController.js";
