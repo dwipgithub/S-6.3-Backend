@@ -5,7 +5,7 @@ import joiDate from "@joi/date";
 import {
   rlLimaTitikSatuDetail,
   rlLimaTitikSatuHeader,
-  rlLimaTitikSatuSatuSehat
+  rlLimaTitikSatuSatuSehat,
 } from "../models/RLLimaTitikSatuModel.js";
 import { satu_sehat_id, users_sso } from "../models/UserModel.js";
 import axios from "axios";
@@ -19,7 +19,7 @@ export const getDataRLLimaTitikSatu = (req, res) => {
   const joi = Joi.extend(joiDate);
   const schema = joi.object({
     rsId: joi.string().required(),
-    periode: joi.date().format("YYYY-M").required(),
+    periode: joi.date().format("YYYY-MM").required(),
     page: joi.number(),
     limit: joi.number(),
   });
@@ -69,7 +69,7 @@ export const getDataRLLimaTitikSatu = (req, res) => {
     .then((results) => {
       // const plainResults = results.map(r => r.toJSON()); // <-- ini penting
       const jsonString = JSON.stringify(results);
-      const size = Buffer.byteLength(jsonString, 'utf8');
+      const size = Buffer.byteLength(jsonString, "utf8");
 
       res.status(200).send({
         status: true,
@@ -193,7 +193,7 @@ export const insertdataRLLimaTitikSatu = async (req, res) => {
             jumlah_kunjungan_L: Joi.number().min(0).required(),
             jumlah_kunjungan_P: Joi.number().min(0).required(),
           })
-          .required()
+          .required(),
       )
       .required(),
   });
@@ -222,7 +222,7 @@ export const insertdataRLLimaTitikSatu = async (req, res) => {
         periode: periode,
         user_id: req.user.id,
       },
-      { transaction }
+      { transaction },
     );
 
     const dataDetail = req.body.data.map((value, index) => {
@@ -428,7 +428,7 @@ export const insertdataRLLimaTitikSatu = async (req, res) => {
                   "jumlah_kunjungan_P",
                   "total_jumlah_kunjungan",
                 ],
-              }
+              },
             );
             await transaction.commit();
             res.status(201).send({
@@ -799,7 +799,7 @@ export const getDataRLLimaTitikSatuSatuSehat = async (req, res) => {
           headers: {
             "X-API-Key": process.env.SATUSEHAT_API_KEY,
           },
-        }
+        },
       );
       const records = response.data?.data?.records;
       // // SAVE DATA KE DB

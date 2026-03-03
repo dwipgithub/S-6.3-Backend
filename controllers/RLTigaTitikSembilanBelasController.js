@@ -1,6 +1,6 @@
 import { databaseSIRS } from "../config/Database.js";
-
 import Joi from "joi";
+import joiDate from "@joi/date";
 import {
   rlTigaTitikSembilanBelas,
   rlTigaTitikSembilanBelasDetail,
@@ -11,14 +11,46 @@ import { golonganObatTigaTitikSembilanBelas } from "../models/GolonganObatTigaTi
 
 // Done
 export const getDataRLTigaTitikSembilanBelas = (req, res) => {
-  let where = { rs_id: req.user.satKerId };
+  const joi = Joi.extend(joiDate);
+  const schema = joi.object({
+    rsId: joi.string().required(),
+    tahun: joi.date().format("YYYY").required(),
+  });
+  const { error, value } = schema.validate(req.query);
+  if (error) {
+    res.status(404).send({
+      status: false,
+      message: error.details[0].message,
+    });
+    return;
+  }
+  let whereClause = {};
 
-  if (req.query.tahun) where.tahun = req.query.tahun;
+  if (req.user.jenisUserId == 4) {
+    if (req.query.rsId != req.user.satKerId) {
+      res.status(404).send({
+        status: false,
+        message: "Kode RS Tidak Sesuai",
+      });
+      return;
+    }
+    whereClause = {
+      rs_id: req.user.satKerId,
+      tahun: req.query.tahun,
+    };
+  } else {
+    whereClause = {
+      rs_id: req.query.rsId,
+      tahun: req.query.tahun,
+    };
+  }
+  // let where = { rs_id: req.user.satKerId };
+  // if (req.query.tahun) where.tahun = req.query.tahun;
 
   rlTigaTitikSembilanBelas
     .findAll({
       attributes: ["id", "tahun"],
-      where: where,
+      where: whereClause,
       include: {
         model: rlTigaTitikSembilanBelasDetail,
         include: {
@@ -175,7 +207,7 @@ export const insertDataRLTigaTitikSembilanBelas = async (req, res) => {
           rajal_lab: Joi.number().min(0),
           rajal_radiologi: Joi.number().min(0),
           rajal_lain_lain: Joi.number().min(0),
-        })
+        }),
       )
       .required(),
   });
@@ -212,7 +244,7 @@ export const insertDataRLTigaTitikSembilanBelas = async (req, res) => {
           user_id: req.user.id,
           tahun: req.body.tahun,
         },
-        { transaction }
+        { transaction },
       );
 
       rlTigaTitikSembilanBelasID = rlInsertHeader.id;
