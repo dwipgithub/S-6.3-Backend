@@ -156,6 +156,57 @@ import {
   updateRLTigaTitikDua,
 } from "../controllers/RLTigaTitikDuaController.js";
 
+// RL 3.2 Validasi
+import {
+  getDataRLTigaTitikDuaValidasi,
+  insertDataRLTigaTitikDuaValidasi,
+  updateDataRLTigaTitikDuaValidasi,
+} from "../controllers/RLtigaTitikDuaValidasiController.js";
+
+// RL 3.3 validasi
+
+import {
+  getDataRLTigaTitikTigaValidasi,
+  insertDataRLTigaTitikTigaValidasi,
+  updateDataRLTigaTitikTigaValidasi,
+} from "../controllers/RLtigaTitikTigaValidasiController.js";
+
+import {
+  getDataRLTigaTitikEmpatValidasi,
+  insertDataRLTigaTitikEmpatValidasi,
+  updateDataRLTigaTitikEmpatValidasi,
+} from "../controllers/RLtigaTitikEmpatValidasiController.js";
+
+import {
+  getDataRLTigaTitikLimaValidasi,
+  insertDataRLTigaTitikLimaValidasi,
+  updateDataRLTigaTitikLimaValidasi,
+} from "../controllers/RLTigaTitikLimaValidasiController.js";
+
+import {
+  getDataRLTigaTitikEnamValidasi,
+  insertDataRLTigaTitikEnamValidasi,
+  updateDataRLTigaTitikEnamValidasi,
+} from "../controllers/RLtigaTitikEnamValidasiController.js";
+
+import {
+  getDataRLTigaTitikTujuhValidasi,
+  insertDataRLTigaTitikTujuhValidasi,
+  updateDataRLTigaTitikTujuhValidasi,
+} from "../controllers/RLtigaTitikTujuhValidasiController.js";
+
+import {
+  getDataRLTigaTitikDelapanValidasi,
+  insertDataRLTigaTitikDelapanValidasi,
+  updateDataRLTigaTitikDelapanValidasi,
+} from "../controllers/RLtigaTitikDelapanValidasiController.js";
+
+import {
+  getDataRLTigaTitikSembilanValidasi,
+  insertDataRLTigaTitikSembilanValidasi,
+  updateDataRLTigaTitikSembilanValidasi,
+} from "../controllers/RLtigaTitikSembilanValidasiController.js";
+
 //Jenis Kegiatan RL 3.9
 import { getDataJenisKegiatanTigaTitikSembilan } from "../controllers/RLTigaTitikSembilanJenisKegiatanController.js";
 
@@ -255,6 +306,7 @@ import {
   getDataRLTigaTitikSembilanBelasDetails,
   getDataRLTigaTitikSembilanBelasById,
 } from "../controllers/RLTigaTitikSembilanBelasController.js";
+
 
 // RL 3.8
 import {
@@ -389,6 +441,153 @@ router.patch(
   verifyToken,
   updateRLTigaTitikDua
 );
+
+// RL 3.2 Validasi
+router.get(
+  "/apisirs6v2/rltigatitikduavalidasi",
+  verifyToken,
+  getDataRLTigaTitikDuaValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitikduavalidasi",
+  verifyToken,
+  insertDataRLTigaTitikDuaValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitikduavalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikDuaValidasi
+);
+
+// RL 3.3 Validasi
+
+router.get(
+  "/apisirs6v2/rltigatitiktigavalidasi",
+  verifyToken,
+  getDataRLTigaTitikTigaValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitiktigavalidasi",
+  verifyToken,
+  insertDataRLTigaTitikTigaValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitiktigavalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikTigaValidasi
+);
+
+// RL 3.4 Validasi
+
+router.get(
+  "/apisirs6v2/rltigatitikempatvalidasi",
+  verifyToken,
+  getDataRLTigaTitikEmpatValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitikempatvalidasi",
+  verifyToken,
+  insertDataRLTigaTitikEmpatValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitikempatvalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikEmpatValidasi
+);
+
+// RL 3.5 Validasi
+
+router.get(
+  "/apisirs6v2/rltigatitiklimavalidasi",
+  verifyToken,
+  getDataRLTigaTitikLimaValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitiklimavalidasi",
+  verifyToken,
+  insertDataRLTigaTitikLimaValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitiklimavalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikLimaValidasi
+);
+
+// RL 3.6 Validasi
+
+router.get(
+  "/apisirs6v2/rltigatitikenamvalidasi",
+  verifyToken,
+  getDataRLTigaTitikEnamValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitikenamvalidasi",
+  verifyToken,
+  insertDataRLTigaTitikEnamValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitikenamvalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikEnamValidasi
+);
+
+
+// RL 3.7 Validasi
+
+router.get(
+  "/apisirs6v2/rltigatitiktujuhvalidasi",
+  verifyToken,
+  getDataRLTigaTitikTujuhValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitiktujuhvalidasi",
+  verifyToken,
+  insertDataRLTigaTitikTujuhValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitiktujuhvalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikTujuhValidasi
+);
+
+// RL 3.8 Validasi
+
+router.get(
+  "/apisirs6v2/rltigatitikdelapanvalidasi",
+  verifyToken,
+  getDataRLTigaTitikDelapanValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitikdelapanvalidasi",
+  verifyToken,
+  insertDataRLTigaTitikDelapanValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitikdelapanvalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikDelapanValidasi
+);
+
+
+// RL 3.9 Validasi
+
+router.get(
+  "/apisirs6v2/rltigatitiksembilanvalidasi",
+  verifyToken,
+  getDataRLTigaTitikSembilanValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitiksembilanvalidasi",
+  verifyToken,
+  insertDataRLTigaTitikSembilanValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitiksembilanvalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikSembilanValidasi
+);
+
+
 
 // RL 3.3
 router.post(
@@ -1057,6 +1256,23 @@ router.patch(
   verifyToken,
   updateDataRLTigaTitikSembilanBelas
 );
+
+// RL 3.19 Validasi
+// router.get(
+//   "/apisirs6v2/rltigatitiksembilanbelasvalidasi",
+//   verifyToken,
+//   getDataRLTigaTitikSembilanBelasValidasi
+// );
+// router.post(
+//   "/apisirs6v2/rltigatitiksembilanbelasvalidasi",
+//   verifyToken,
+//   insertDataRLTigaTitikSembilanBelasValidasi
+// );
+// router.patch(
+//   "/apisirs6v2/rltigatitiksembilanbelasvalidasi/:id",
+//   verifyToken,
+//   updateDataRLTigaTitikSembilanBelasValidasi
+// );
 
 // RL 4.1
 router.post(
