@@ -91,6 +91,85 @@ export const getDataRLLimaTitikSatu = (req, res) => {
     });
 };
 
+export const getDataRLLimaTitikSatuPaging = async (req, res) => {
+  const joi = Joi.extend(joiDate);
+  const schema = joi.object({
+    rsId: joi.string().required(),
+    periode: joi.date().format("YYYY-MM").required(),
+    page: joi.number().min(1).default(1),
+    limit: joi.number().min(1).max(200).default(50),
+  });
+  const { error, value } = schema.validate(req.query);
+  if (error) {
+    res.status(404).send({
+      status: false,
+      message: error.details[0].message,
+    });
+    return;
+  }
+  let whereClause = {};
+  if (req.user.jenisUserId == 4) {
+    if (req.query.rsId != req.user.satKerId) {
+      res.status(404).send({
+        status: false,
+        message: "Kode RS Tidak Sesuai",
+      });
+      return;
+    }
+    whereClause = {
+      rs_id: req.user.satKerId,
+      periode: req.query.periode,
+    };
+  } else {
+    whereClause = {
+      rs_id: req.query.rsId,
+      periode: req.query.periode,
+    };
+  }
+
+  const { page, limit, rsId, periode } = value;
+  const offset = (page - 1) * limit;
+
+  try {
+    const rows = await rlLimaTitikSatuDetail.findAll({
+      include: {
+        model: icd,
+        attributes: [
+          "icd_code",
+          "description_code",
+          "icd_code_group",
+          "description_code_group",
+        ],
+      },
+      where: whereClause,
+      limit,
+      offset,
+      order: [["id", "ASC"]],
+    });
+
+    const totalRows = await rlLimaTitikSatuDetail.count({
+      where: whereClause,
+    });
+
+    return res.status(200).send({
+      status: true,
+      message: "data found",
+      data: rows,
+      pagination: {
+        page,
+        limit,
+        totalRows,
+        totalPages: Math.ceil(totalRows / limit),
+      },
+    });
+  } catch (err) {
+    return res.status(422).send({
+      status: false,
+      message: err.message,
+    });
+  }
+};
+
 export const getDataRLLimaTitikSatuById = (req, res) => {
   rlLimaTitikSatuDetail
     .findOne({
