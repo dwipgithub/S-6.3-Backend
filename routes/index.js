@@ -323,6 +323,7 @@ import {
   deleteDataRLEmpatTitikSatu,
   getDataRLEmpatTitikSatu,
   getDataRLEmpatTitikSatuById,
+  getDataRLEmpatTitikSatuPaging,
   // getRLEmpatTitikDua,
   // getRLEmpatTitikTiga,
   insertDataRLEmpatTitikSatu,
@@ -349,6 +350,7 @@ import {
 // RL 5.1
 import {
   deleteDataRLLimaTitikSatu,
+  getDataRLLimaTitikSatuPaging,
   getDataRLLimaTitikSatu,
   getDataRLLimaTitikSatuById,
   insertdataRLLimaTitikSatu,
@@ -1331,6 +1333,13 @@ router.get(
   verifyToken,
   getDataRLEmpatTitikSatu,
 );
+
+router.get(
+  "/apisirs6v2/rlempattitiksatupaging/",
+  verifyToken,
+  getDataRLEmpatTitikSatuPaging,
+);
+
 router.delete(
   "/apisirs6v2/rlempattitiksatu/:id",
   verifyCsrfToken,
@@ -1373,6 +1382,12 @@ router.post(
 );
 
 router.get("/apisirs6v2/rllimatitiksatu", verifyToken, getDataRLLimaTitikSatu);
+
+router.get(
+  "/apisirs6v2/rllimatitiksatupaging",
+  verifyToken,
+  getDataRLLimaTitikSatuPaging,
+);
 
 router.get(
   "/apisirs6v2/rllimatitiksatu/:id",
