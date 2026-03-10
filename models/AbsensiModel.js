@@ -419,26 +419,38 @@ export const get = (req, callback) => {
     .map((c) => `absensi_validasi.${c} AS ${c}_validasi`)
     .join(", ");
 
+  // const sqlSelect =
+  //   "SELECT " +
+  //   "absensi.rs_id, " +
+  //   "CASE " +
+  //   "WHEN ROUND (( " +
+  //   sumColumns +
+  //   ") * 100 / 223, 2) = 0 " +
+  //   "THEN 100 " +
+  //   "WHEN ROUND (( " +
+  //   sumColumns +
+  //   ") * 100 / 223, 2) = 0 " +
+  //   "THEN 100 " +
+  //   "ELSE ROUND (( " +
+  //   sumColumns +
+  //   ") * 100 / 223, 2) " +
+  //   "END AS persentase_pengisian, " +
+  //   absensiSelect +
+  //   ", " +
+  //   validationSelect +
+  //   " ";
+
   const sqlSelect =
     "SELECT " +
     "absensi.rs_id, " +
-    "CASE " +
-    "WHEN ROUND (( " +
+    "ROUND (( " +
     sumColumns +
-    ") * 100 / 223, 2) = 0 " +
-    "THEN 100 " +
-    "WHEN ROUND (( " +
-    sumColumns +
-    ") * 100 / 223, 2) = 0 " +
-    "THEN 100 " +
-    "ELSE ROUND (( " +
-    sumColumns +
-    ") * 100 / 223, 2) " +
-    "END AS persentase_pengisian, " +
+    ") * 100 / 223, 2) AS persentase_pengisian, " +
     absensiSelect +
     ", " +
     validationSelect +
     " ";
+
   const sqlFrom =
     "FROM " +
     "absensi " +
