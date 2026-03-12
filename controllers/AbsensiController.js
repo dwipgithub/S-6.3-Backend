@@ -127,11 +127,28 @@ export const getAbsensiNew = async (req, res) => {
       },
     });
 
+    // const rsList = response.data.data
+    //   ? response.data.data.filter(
+    //       (item) =>
+    //         item.statusAktivasi == 1 && item.jenis !== "RS Kapal/Bergerak",
+    //     )
+    //   : [];
+
+    const tahunFilter = parseInt(value.tahun);
+
     const rsList = response.data.data
-      ? response.data.data.filter(
-          (item) =>
-            item.statusAktivasi == 1 && item.jenis !== "RS Kapal/Bergerak",
-        )
+      ? response.data.data.filter((item) => {
+          if (item.statusAktivasi != 1) return false;
+          if (item.jenis === "RS Kapal/Bergerak") return false;
+
+          // ambil tahun TMO
+          const tmoYear = item.tmo ? new Date(item.tmo).getFullYear() : null;
+
+          // jika ada TMO dan tahun filter lebih kecil dari TMO → skip
+          if (tmoYear && tahunFilter < tmoYear) return false;
+
+          return true;
+        })
       : [];
 
     if (!rsList || rsList.length === 0) {
