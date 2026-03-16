@@ -11,49 +11,58 @@ import { jenisPelayananTigaTitikTiga } from "../models/JenisPelayananTigaTitikTi
 
 // Done
 export const getDataRLTigaTitikTiga = (req, res) => {
-  let where = { rs_id: req.user.satKerId };
+
+  let rsIdFinal = req.user.satKerId;
+
+  // ⭐ kalau user pilih RS (role dinkes)
+  if (req.query.rsId && req.query.rsId !== "") {
+    rsIdFinal = req.query.rsId;
+  }
+
+  let where = {
+    rs_id: rsIdFinal
+  };
 
   if (req.query.tahun) where.tahun = req.query.tahun;
   if (req.query.bulan) where.bulan = req.query.bulan;
 
-  rlTigaTitikTiga
-    .findAll({
-      attributes: ["id", "tahun", "bulan"],
-      where: where,
+  rlTigaTitikTiga.findAll({
+    attributes: ["id", "tahun", "bulan"],
+    where: where,
+    include: {
+      model: rlTigaTitikTigaDetail,
       include: {
-        model: rlTigaTitikTigaDetail,
-        include: {
+        model: jenisPelayananTigaTitikTiga,
+        attributes: ["id", "no", "nama"],
+        as: "jenis_pelayanan_rl_tiga_titik_tiga",
+      },
+    },
+    order: [
+      [
+        rlTigaTitikTigaDetail,
+        {
           model: jenisPelayananTigaTitikTiga,
-          attributes: ["id", "no", "nama"],
           as: "jenis_pelayanan_rl_tiga_titik_tiga",
         },
-      },
-      order: [
-        [
-          rlTigaTitikTigaDetail,
-          {
-            model: jenisPelayananTigaTitikTiga,
-            as: "jenis_pelayanan_rl_tiga_titik_tiga",
-          },
-          "no",
-          "ASC",
-        ],
+        "no",
+        "ASC",
       ],
-    })
-    .then((results) => {
-      res.status(200).send({
-        status: true,
-        message: "data found",
-        data: results,
-      });
-    })
-    .catch((err) => {
-      res.status(422).send({
-        status: false,
-        message: err,
-      });
-      return;
+    ],
+  })
+  .then((results) => {
+    res.status(200).send({
+      status: true,
+      message: "data found",
+      data: results,
     });
+  })
+  .catch((err) => {
+    res.status(422).send({
+      status: false,
+      message: err,
+    });
+  });
+
 };
 
 // Unknown
