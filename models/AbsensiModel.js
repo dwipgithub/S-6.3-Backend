@@ -414,10 +414,14 @@ export const get = (req, callback) => {
   });
 
   const sumColumns = columns.map((c) => `absensi.${c}`).join(" + ");
+  const sumValidationDone = columns
+    .map((c) => `CASE WHEN absensi_validasi.${c} = 3 THEN 1 ELSE 0 END`)
+    .join(" + ");
   const absensiSelect = columns.map((c) => `absensi.${c}`).join(", ");
   const validationSelect = columns
     .map((c) => `absensi_validasi.${c} AS ${c}_validasi`)
     .join(", ");
+  const totalField = columns.length;
 
   // const sqlSelect =
   //   "SELECT " +
@@ -440,12 +444,33 @@ export const get = (req, callback) => {
   //   validationSelect +
   //   " ";
 
+  // const sqlSelect =
+  //   "SELECT " +
+  //   "absensi.rs_id, " +
+  //   "ROUND (( " +
+  //   sumColumns +
+  //   ") * 100 / 223, 2) AS persentase_pengisian, " +
+  //   absensiSelect +
+  //   ", " +
+  //   validationSelect +
+  //   " ";
+
   const sqlSelect =
     "SELECT " +
     "absensi.rs_id, " +
     "ROUND (( " +
     sumColumns +
-    ") * 100 / 223, 2) AS persentase_pengisian, " +
+    ") * 100 /" +
+    totalField +
+    ", 2) AS persentasePengisian, " +
+    "CASE " +
+    "WHEN absensi_validasi.rs_id IS NULL THEN 0 " +
+    "ELSE ROUND((" +
+    sumValidationDone +
+    ") * 100 / " +
+    totalField +
+    ", 2) " +
+    "END AS persentaseValidasi, " +
     absensiSelect +
     ", " +
     validationSelect +
