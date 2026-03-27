@@ -9,13 +9,33 @@ import { jenisKegiatanTigaTitikLimaBelas } from "../models/JenisKegiatanTigaTiti
 
 //new---------------------------------------------------------------------------------------------------------------------------
 export const getDataRLTigaTitikLimaBelas = (req, res) => {
+  const { rsId, tahun } = req.query;
+
+  let whereClause = {};
+
+  if (req.user.jenisUserId == 4) {
+    if (rsId != req.user.satKerId) {
+      return res.status(403).send({
+        status: false,
+        message: "Kode RS Tidak Sesuai",
+      });
+    }
+
+    whereClause = {
+      rs_id: req.user.satKerId,
+      tahun: tahun,
+    };
+  } else {
+    whereClause = {
+      rs_id: rsId,
+      tahun: tahun,
+    };
+  }
+
   rlTigaTitikLimaBelas
     .findAll({
       attributes: ["id", "tahun"],
-      where: {
-        rs_id: req.user.satKerId,
-        tahun: req.query.tahun,
-      },
+      where: whereClause,
       include: {
         model: rlTigaTitikLimaBelasDetail,
         include: {
@@ -44,11 +64,11 @@ export const getDataRLTigaTitikLimaBelas = (req, res) => {
       });
     })
     .catch((err) => {
-      res.status(422).send({
+      console.error("SEQUELIZE ERROR:", err);
+      res.status(500).send({
         status: false,
-        message: err,
+        message: "Terjadi kesalahan pada server",
       });
-      return;
     });
 };
 
@@ -163,7 +183,7 @@ export const insertDataRLTigaTitikLimaBelas = async (req, res) => {
           jumlah: Joi.number().min(0),
           laki: Joi.number().min(0),
           perempuan: Joi.number().min(0),
-        })
+        }),
       )
       .required(),
   });
@@ -187,7 +207,7 @@ export const insertDataRLTigaTitikLimaBelas = async (req, res) => {
         user_id: req.user.id,
         tahun: req.body.tahun,
       },
-      { transaction }
+      { transaction },
     );
     const dataDetail = req.body.data.map((value, index) => {
       return {
