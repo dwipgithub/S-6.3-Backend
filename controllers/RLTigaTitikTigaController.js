@@ -349,6 +349,13 @@ export const insertDataRLTigaTitikTiga = async (req, res) => {
           luka_laki: Joi.number().min(0).optional(),
           luka_perempuan: Joi.number().min(0).optional(),
           false_emergency: Joi.number().min(0).optional(),
+        }).custom((value, helpers) => {
+          const totalPasien = (value.total_pasien_rujukan || 0) + (value.total_pasien_non_rujukan || 0);
+          const totalLuka = (value.luka_laki || 0) + (value.luka_perempuan || 0);
+          if (totalLuka > totalPasien) {
+            return helpers.error('any.custom', { message: 'Jumlah luka laki-laki dan perempuan tidak boleh melebihi total pasien rujukan dan non rujukan' });
+          }
+          return value;
         })
       )
       .required(),
@@ -555,6 +562,13 @@ export const updateDataRLTigaTitikTiga = async (req, res) => {
     luka_laki: Joi.number().required(),
     luka_perempuan: Joi.number().required(),
     false_emergency: Joi.number().required(),
+  }).custom((value, helpers) => {
+    const totalPasien = value.total_pasien_rujukan + value.total_pasien_non_rujukan;
+    const totalLuka = value.luka_laki + value.luka_perempuan;
+    if (totalLuka > totalPasien) {
+      return helpers.error('any.custom', { message: 'Jumlah luka laki-laki dan perempuan tidak boleh melebihi total pasien rujukan dan non rujukan' });
+    }
+    return value;
   });
 
   const { error, value } = schema.validate(req.body);
