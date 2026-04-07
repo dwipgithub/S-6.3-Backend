@@ -642,6 +642,9 @@ export const deleteDataRLTigaTitikTiga = async (req, res) => {
       },
     });
 
+
+    
+
     if (!currentData) {
       return res.status(404).send({
         status: false,
