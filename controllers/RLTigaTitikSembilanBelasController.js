@@ -269,12 +269,14 @@ export const insertDataRLTigaTitikSembilanBelas = async (req, res) => {
 
     await rlTigaTitikSembilanBelasDetail.bulkCreate(dataDetail, {
       transaction,
-      updateOnDuplicate: ["ranap_pasien_keluar"],
-      updateOnDuplicate: ["ranap_lama_dirawat"],
-      updateOnDuplicate: ["jumlah_pasien_rajal"],
-      updateOnDuplicate: ["rajal_lab"],
-      updateOnDuplicate: ["rajal_radiologi"],
-      updateOnDuplicate: ["rajal_lain_lain"],
+      updateOnDuplicate: [
+        "ranap_pasien_keluar",
+        "ranap_lama_dirawat",
+        "jumlah_pasien_rajal",
+        "rajal_lab",
+        "rajal_radiologi",
+        "rajal_lain_lain",
+      ],
     });
 
     await transaction.commit();
