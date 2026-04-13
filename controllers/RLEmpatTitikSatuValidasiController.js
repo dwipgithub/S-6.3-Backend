@@ -419,23 +419,21 @@ export const updateDataRLEmpatTitikSatuValidasi = async (req, res) => {
     }),
   });
 
-  const { error, value } = schema.validate(req.body);
+  const { error } = schema.validate(req.body);
   if (error) {
-    res.status(404).send({
+    return res.status(404).send({
       status: false,
       message: error.details[0].message,
     });
-    return;
   }
 
   let transaction;
 
   try {
     transaction = await databaseSIRS.transaction();
+
     const dataExist = await rlEmpatTitikSatuValidasi.findOne({
-      where: {
-        id: req.params.id,
-      },
+      where: { id: req.params.id },
       transaction,
     });
 
@@ -447,6 +445,7 @@ export const updateDataRLEmpatTitikSatuValidasi = async (req, res) => {
       });
     }
 
+    // 🔐 Authorization
     if (req.user.jenisUserId == 4) {
       if (req.user.satKerId != dataExist.rs_id) {
         await transaction.rollback();
@@ -463,21 +462,33 @@ export const updateDataRLEmpatTitikSatuValidasi = async (req, res) => {
       });
     }
 
-    await rlEmpatTitikSatuValidasi.update(
-      {
+    // 🔥 Helper payload (inti solusi)
+    const buildPayload = (extra = {}) => {
+      let data = {
+        ...extra,
         status_validasi_id: req.body.statusValidasiId,
-        catatan: req.body.catatan,
         user_id: req.user.id,
-      },
-      {
-        where: {
-          id: req.params.id,
-        },
-        transaction,
-      },
-    );
+      };
 
-    // RL 4.2
+      // ❗ catatan hanya di-update jika bukan status 2
+      if (req.body.statusValidasiId !== 2) {
+        data.catatan = req.body.catatan;
+      }
+
+      return data;
+    };
+
+    // ====================
+    // ✅ RL 4.1
+    // ====================
+    await rlEmpatTitikSatuValidasi.update(buildPayload(), {
+      where: { id: req.params.id },
+      transaction,
+    });
+
+    // ====================
+    // ✅ RL 4.2
+    // ====================
     const dataExist42 = await rlEmpatTitikDuaValidasi.findOne({
       where: {
         rs_id: dataExist.rs_id,
@@ -487,35 +498,27 @@ export const updateDataRLEmpatTitikSatuValidasi = async (req, res) => {
     });
 
     if (dataExist42) {
-      await rlEmpatTitikDuaValidasi.update(
-        {
-          status_validasi_id: req.body.statusValidasiId,
-          catatan: req.body.catatan,
-          user_id: req.user.id,
+      await rlEmpatTitikDuaValidasi.update(buildPayload(), {
+        where: {
+          rs_id: dataExist.rs_id,
+          periode: dataExist.periode,
         },
-        {
-          where: {
-            rs_id: dataExist.rs_id,
-            periode: dataExist.periode,
-          },
-          transaction,
-        },
-      );
+        transaction,
+      });
     } else {
       await rlEmpatTitikDuaValidasi.create(
-        {
+        buildPayload({
           rs_id: dataExist.rs_id,
           jenis_periode: dataExist.jenis_periode,
           periode: dataExist.periode,
-          status_validasi_id: req.body.statusValidasiId,
-          catatan: req.body.catatan,
-          user_id: req.user.id,
-        },
+        }),
         { transaction },
       );
     }
 
-    // RL 4.3
+    // ====================
+    // ✅ RL 4.3
+    // ====================
     const dataExist43 = await rlEmpatTitikTigaValidasi.findOne({
       where: {
         rs_id: dataExist.rs_id,
@@ -525,48 +528,199 @@ export const updateDataRLEmpatTitikSatuValidasi = async (req, res) => {
     });
 
     if (dataExist43) {
-      await rlEmpatTitikTigaValidasi.update(
-        {
-          status_validasi_id: req.body.statusValidasiId,
-          catatan: req.body.catatan,
-          user_id: req.user.id,
+      await rlEmpatTitikTigaValidasi.update(buildPayload(), {
+        where: {
+          rs_id: dataExist.rs_id,
+          periode: dataExist.periode,
         },
-        {
-          where: {
-            rs_id: dataExist.rs_id,
-            periode: dataExist.periode,
-          },
-          transaction,
-        },
-      );
+        transaction,
+      });
     } else {
       await rlEmpatTitikTigaValidasi.create(
-        {
+        buildPayload({
           rs_id: dataExist.rs_id,
           jenis_periode: dataExist.jenis_periode,
           periode: dataExist.periode,
-          status_validasi_id: req.body.statusValidasiId,
-          catatan: req.body.catatan,
-          user_id: req.user.id,
-        },
+        }),
         { transaction },
       );
     }
 
     await transaction.commit();
 
-    res.status(200).send({
+    return res.status(200).send({
       status: true,
       message: "Data Diperbaharui",
     });
   } catch (error) {
-    if (transaction) {
-      await transaction.rollback();
-    }
-    res.status(400).send({
+    if (transaction) await transaction.rollback();
+
+    return res.status(400).send({
       status: false,
       message: "Gagal Memperbaharui Data",
       error: error.message,
     });
   }
 };
+
+// export const updateDataRLEmpatTitikSatuValidasi = async (req, res) => {
+//   const schema = Joi.object({
+//     statusValidasiId: Joi.number().required(),
+//     catatan: Joi.string().when("statusValidasiId", {
+//       is: 1,
+//       then: Joi.required(),
+//       otherwise: Joi.string().allow("").optional(),
+//     }),
+//   });
+
+//   const { error, value } = schema.validate(req.body);
+//   if (error) {
+//     res.status(404).send({
+//       status: false,
+//       message: error.details[0].message,
+//     });
+//     return;
+//   }
+
+//   let transaction;
+
+//   try {
+//     transaction = await databaseSIRS.transaction();
+//     const dataExist = await rlEmpatTitikSatuValidasi.findOne({
+//       where: {
+//         id: req.params.id,
+//       },
+//       transaction,
+//     });
+
+//     if (!dataExist) {
+//       await transaction.rollback();
+//       return res.status(404).send({
+//         status: false,
+//         message: "Data tidak ditemukan",
+//       });
+//     }
+
+//     if (req.user.jenisUserId == 4) {
+//       if (req.user.satKerId != dataExist.rs_id) {
+//         await transaction.rollback();
+//         return res.status(403).send({
+//           status: false,
+//           message: "Anda tidak memiliki akses",
+//         });
+//       }
+//     } else if (req.user.jenisUserId != 3) {
+//       await transaction.rollback();
+//       return res.status(403).send({
+//         status: false,
+//         message: "Anda tidak memiliki akses",
+//       });
+//     }
+
+//     await rlEmpatTitikSatuValidasi.update(
+//       {
+//         status_validasi_id: req.body.statusValidasiId,
+//         catatan: req.body.catatan,
+//         user_id: req.user.id,
+//       },
+//       {
+//         where: {
+//           id: req.params.id,
+//         },
+//         transaction,
+//       },
+//     );
+
+//     // RL 4.2
+//     const dataExist42 = await rlEmpatTitikDuaValidasi.findOne({
+//       where: {
+//         rs_id: dataExist.rs_id,
+//         periode: dataExist.periode,
+//       },
+//       transaction,
+//     });
+
+//     if (dataExist42) {
+//       await rlEmpatTitikDuaValidasi.update(
+//         {
+//           status_validasi_id: req.body.statusValidasiId,
+//           catatan: req.body.catatan,
+//           user_id: req.user.id,
+//         },
+//         {
+//           where: {
+//             rs_id: dataExist.rs_id,
+//             periode: dataExist.periode,
+//           },
+//           transaction,
+//         },
+//       );
+//     } else {
+//       await rlEmpatTitikDuaValidasi.create(
+//         {
+//           rs_id: dataExist.rs_id,
+//           jenis_periode: dataExist.jenis_periode,
+//           periode: dataExist.periode,
+//           status_validasi_id: req.body.statusValidasiId,
+//           catatan: req.body.catatan,
+//           user_id: req.user.id,
+//         },
+//         { transaction },
+//       );
+//     }
+
+//     // RL 4.3
+//     const dataExist43 = await rlEmpatTitikTigaValidasi.findOne({
+//       where: {
+//         rs_id: dataExist.rs_id,
+//         periode: dataExist.periode,
+//       },
+//       transaction,
+//     });
+
+//     if (dataExist43) {
+//       await rlEmpatTitikTigaValidasi.update(
+//         {
+//           status_validasi_id: req.body.statusValidasiId,
+//           catatan: req.body.catatan,
+//           user_id: req.user.id,
+//         },
+//         {
+//           where: {
+//             rs_id: dataExist.rs_id,
+//             periode: dataExist.periode,
+//           },
+//           transaction,
+//         },
+//       );
+//     } else {
+//       await rlEmpatTitikTigaValidasi.create(
+//         {
+//           rs_id: dataExist.rs_id,
+//           jenis_periode: dataExist.jenis_periode,
+//           periode: dataExist.periode,
+//           status_validasi_id: req.body.statusValidasiId,
+//           catatan: req.body.catatan,
+//           user_id: req.user.id,
+//         },
+//         { transaction },
+//       );
+//     }
+
+//     await transaction.commit();
+
+//     res.status(200).send({
+//       status: true,
+//       message: "Data Diperbaharui",
+//     });
+//   } catch (error) {
+//     if (transaction) {
+//       await transaction.rollback();
+//     }
+//     res.status(400).send({
+//       status: false,
+//       message: "Gagal Memperbaharui Data",
+//       error: error.message,
+//     });
+//   }
+// };
