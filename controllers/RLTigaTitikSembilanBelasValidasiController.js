@@ -213,9 +213,9 @@ export const updateDataRLTigaTitikSembilanBelasValidasi = async (req, res) => {
     }
 
     let catatan = req.body.catatan;
-    if (req.body.statusValidasiId == 2) {
-      catatan = "";
-    }
+    // if (req.body.statusValidasiId == 2) {
+    //   catatan = "";
+    // }
 
     await rlTigaTitikSembilanBelasValidasi.update(
       {
