@@ -13,19 +13,19 @@ export const getDataRLTigaTitikSepuluhValidasi = (req, res) => {
   if (req.query.periode) {
     const periode = req.query.periode;
 
-    if (periode.length === 4) {
-      where.periode = {
-        [Op.between]: [`${periode}-01-01`, `${periode}-12-31`],
-      };
-    } else {
-      let modifiedPeriode = periode;
-      if (periode.length === 7) {
-        const year = periode.substring(0, 4);
-        const month = periode.substring(5, 7);
-        const lastDay = new Date(year, month, 0).getDate();
-        modifiedPeriode = `${year}-${month}-${lastDay}`;
-      }
-      where.periode = modifiedPeriode;
+    if (!/^\d{4}-\d{2}$/.test(periode)) {
+      return res.status(400).send({
+        status: false,
+        message: "Format periode harus YYYY-MM",
+      });
+    }
+
+    if (periode.length === 7) {
+      const year = periode.substring(0, 4);
+      const month = periode.substring(5, 7);
+      const lastDay = new Date(year, month, 0).getDate();
+
+      where.periode = `${year}-${month}-${lastDay}`;
     }
   }
 
@@ -89,6 +89,8 @@ export const insertDataRLTigaTitikSepuluhValidasi = async (req, res) => {
     return;
   }
 
+  delete req.body.jenisPeriode;
+
   if (req.user.jenisUserId == 4) {
     if (req.user.satKerId != req.body.rsId) {
       return res.status(403).send({
@@ -125,7 +127,7 @@ export const insertDataRLTigaTitikSepuluhValidasi = async (req, res) => {
 
     const result = await rlTigaTitikSepuluhValidasi.create({
       rs_id: req.body.rsId,
-      jenis_periode: req.body.jenisPeriode,
+      jenis_periode: 2,
       periode: periode,
       status_validasi_id: req.body.statusValidasiId,
       catatan: req.body.catatan,
@@ -167,6 +169,8 @@ export const updateDataRLTigaTitikSepuluhValidasi = async (req, res) => {
     return;
   }
 
+  delete req.body.jenisPeriode;
+
   try {
     const dataExist = await rlTigaTitikSepuluhValidasi.findOne({
       where: {
@@ -180,6 +184,9 @@ export const updateDataRLTigaTitikSepuluhValidasi = async (req, res) => {
         message: "Data tidak ditemukan",
       });
     }
+
+    const year = dataExist.periode.substring(0, 4);
+    const month = dataExist.periode.substring(5, 7);
 
     if (req.user.jenisUserId == 4) {
       if (req.user.satKerId != dataExist.rs_id) {

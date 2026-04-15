@@ -13,20 +13,18 @@ export const getDataRLTigaTitikEmpatBelasValidasi = (req, res) => {
   if (req.query.periode) {
     const periode = req.query.periode;
 
-    if (periode.length === 4) {
-      where.periode = {
-        [Op.between]: [`${periode}-01-01`, `${periode}-12-31`],
-      };
-    } else {
-      let modifiedPeriode = periode;
-      if (periode.length === 7) {
-        const year = periode.substring(0, 4);
-        const month = periode.substring(5, 7);
-        const lastDay = new Date(year, month, 0).getDate();
-        modifiedPeriode = `${year}-${month}-${lastDay}`;
-      }
-      where.periode = modifiedPeriode;
+    if (!/^\d{4}-\d{2}$/.test(periode)) {
+      return res.status(400).send({
+        status: false,
+        message: "Format periode harus YYYY-MM",
+      });
     }
+
+    const year = periode.substring(0, 4);
+    const month = periode.substring(5, 7);
+    const lastDay = new Date(year, month, 0).getDate();
+
+    where.periode = `${year}-${month}-${lastDay}`;
   }
 
   if (req.query.statusValidasiId) {
@@ -72,6 +70,9 @@ export const insertDataRLTigaTitikEmpatBelasValidasi = async (req, res) => {
   const schema = Joi.object({
     rsId: Joi.string().required(),
     periode: Joi.string().required(),
+    // periode: Joi.string()
+    //   .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    //   .required(),
     statusValidasiId: Joi.number().required(),
     catatan: Joi.string().when("statusValidasiId", {
       is: 1,
@@ -81,6 +82,7 @@ export const insertDataRLTigaTitikEmpatBelasValidasi = async (req, res) => {
   });
 
   const { error, value } = schema.validate(req.body);
+
   if (error) {
     res.status(404).send({
       status: false,
@@ -88,6 +90,7 @@ export const insertDataRLTigaTitikEmpatBelasValidasi = async (req, res) => {
     });
     return;
   }
+  delete req.body.jenisPeriode;
 
   if (req.user.jenisUserId == 4) {
     if (req.user.satKerId != req.body.rsId) {
@@ -104,6 +107,12 @@ export const insertDataRLTigaTitikEmpatBelasValidasi = async (req, res) => {
   }
 
   try {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(req.body.periode)) {
+      return res.status(400).send({
+        status: false,
+        message: "Format periode harus YYYY-MM-DD",
+      });
+    }
     const year = req.body.periode.substring(0, 4);
     const month = req.body.periode.substring(5, 7);
     const lastDay = new Date(year, month, 0).getDate();
@@ -125,7 +134,7 @@ export const insertDataRLTigaTitikEmpatBelasValidasi = async (req, res) => {
 
     const result = await rlTigaTitikEmpatBelasValidasi.create({
       rs_id: req.body.rsId,
-      jenis_periode: req.body.jenisPeriode,
+      jenis_periode: 2,
       periode: periode,
       status_validasi_id: req.body.statusValidasiId,
       catatan: req.body.catatan,
@@ -159,6 +168,7 @@ export const updateDataRLTigaTitikEmpatBelasValidasi = async (req, res) => {
   });
 
   const { error, value } = schema.validate(req.body);
+
   if (error) {
     res.status(404).send({
       status: false,
@@ -166,6 +176,7 @@ export const updateDataRLTigaTitikEmpatBelasValidasi = async (req, res) => {
     });
     return;
   }
+  delete req.body.jenisPeriode;
 
   try {
     const dataExist = await rlTigaTitikEmpatBelasValidasi.findOne({
@@ -204,6 +215,8 @@ export const updateDataRLTigaTitikEmpatBelasValidasi = async (req, res) => {
       {
         where: {
           id: req.params.id,
+          rs_id: dataExist.rs_id,
+          periode: dataExist.periode,
         },
       },
     );

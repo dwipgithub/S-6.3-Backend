@@ -13,20 +13,18 @@ export const getDataRLTigaTitikDuaBelasValidasi = (req, res) => {
   if (req.query.periode) {
     const periode = req.query.periode;
 
-    if (periode.length === 4) {
-      where.periode = {
-        [Op.between]: [`${periode}-01-01`, `${periode}-12-31`],
-      };
-    } else {
-      let modifiedPeriode = periode;
-      if (periode.length === 7) {
-        const year = periode.substring(0, 4);
-        const month = periode.substring(5, 7);
-        const lastDay = new Date(year, month, 0).getDate();
-        modifiedPeriode = `${year}-${month}-${lastDay}`;
-      }
-      where.periode = modifiedPeriode;
+    if (!/^\d{4}-\d{2}$/.test(periode)) {
+      return res.status(400).send({
+        status: false,
+        message: "Format periode harus YYYY-MM",
+      });
     }
+
+    const year = periode.substring(0, 4);
+    const month = periode.substring(5, 7);
+    const lastDay = new Date(year, month, 0).getDate();
+
+    where.periode = `${year}-${month}-${lastDay}`;
   }
 
   if (req.query.statusValidasiId) {
@@ -81,6 +79,8 @@ export const insertDataRLTigaTitikDuaBelasValidasi = async (req, res) => {
   });
 
   const { error, value } = schema.validate(req.body);
+  delete req.body.jenisPeriode;
+
   if (error) {
     res.status(404).send({
       status: false,
@@ -116,6 +116,8 @@ export const insertDataRLTigaTitikDuaBelasValidasi = async (req, res) => {
       },
     });
 
+    // delete req.body.jenisPeriode;
+
     if (dataExist) {
       return res.status(400).send({
         status: false,
@@ -125,7 +127,8 @@ export const insertDataRLTigaTitikDuaBelasValidasi = async (req, res) => {
 
     const result = await rlTigaTitikDuaBelasValidasi.create({
       rs_id: req.body.rsId,
-      jenis_periode: req.body.jenisPeriode,
+      // jenis_periode: req.body.jenisPeriode,
+      jenis_periode: 2,
       periode: periode,
       status_validasi_id: req.body.statusValidasiId,
       catatan: req.body.catatan,
@@ -159,6 +162,8 @@ export const updateDataRLTigaTitikDuaBelasValidasi = async (req, res) => {
   });
 
   const { error, value } = schema.validate(req.body);
+  delete req.body.jenisPeriode;
+
   if (error) {
     res.status(404).send({
       status: false,
@@ -173,6 +178,8 @@ export const updateDataRLTigaTitikDuaBelasValidasi = async (req, res) => {
         id: req.params.id,
       },
     });
+
+    // delete req.body.jenisPeriode;
 
     if (!dataExist) {
       return res.status(404).send({
