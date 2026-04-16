@@ -23,7 +23,7 @@ export const insertDataRLTigaTitikDuaBelas = async (req, res) => {
             Sedang: Joi.number().required(),
             Kecil: Joi.number().required(),
           })
-          .required()
+          .required(),
       )
       .required(),
   });
@@ -57,7 +57,7 @@ export const insertDataRLTigaTitikDuaBelas = async (req, res) => {
       },
       {
         transaction,
-      }
+      },
     );
 
     const dataDetail = req.body.data.map((value, index) => {
@@ -81,7 +81,7 @@ export const insertDataRLTigaTitikDuaBelas = async (req, res) => {
       {
         transaction,
         updateOnDuplicate: ["khusus", "besar", "sedang", "kecil", "total"],
-      }
+      },
     );
 
     await transaction.commit();
@@ -121,13 +121,20 @@ export const getRLTigaTitikDuaBelas = (req, res) => {
   const joi = Joi.extend(joiDate);
   const schema = Joi.object({
     rsId: Joi.string().required(),
-    periode: joi.date().format("YYYY-M").required(),
-    // periode: Joi.number().required(),
+    periode: Joi.string()
+      .pattern(/^\d{4}-\d{2}$/)
+      .required(),
     page: Joi.number(),
     limit: Joi.number(),
   });
 
   const { error, value } = schema.validate(req.query);
+  const periode = req.query.periode;
+  const year = periode.substring(0, 4);
+  const month = periode.substring(5, 7);
+  const lastDay = new Date(year, month, 0).getDate();
+
+  req.query.periode = `${year}-${month}-${lastDay}`;
 
   if (error) {
     res.status(400).send({
