@@ -206,20 +206,23 @@ export const updateDataRLTigaTitikEmpatBelasValidasi = async (req, res) => {
       });
     }
 
-    await rlTigaTitikEmpatBelasValidasi.update(
-      {
-        status_validasi_id: req.body.statusValidasiId,
-        catatan: req.body.catatan,
-        user_id: req.user.id,
+    let updateData = {
+      status_validasi_id: req.body.statusValidasiId,
+      user_id: req.user.id,
+    };
+
+    // hanya update catatan jika bukan status 2
+    if (req.body.statusValidasiId !== 2) {
+      updateData.catatan = req.body.catatan;
+    }
+
+    await rlTigaTitikEmpatBelasValidasi.update(updateData, {
+      where: {
+        id: req.params.id,
+        rs_id: dataExist.rs_id,
+        periode: dataExist.periode,
       },
-      {
-        where: {
-          id: req.params.id,
-          rs_id: dataExist.rs_id,
-          periode: dataExist.periode,
-        },
-      },
-    );
+    });
 
     res.status(200).send({
       status: true,
