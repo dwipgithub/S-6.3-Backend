@@ -349,6 +349,13 @@ export const insertDataRLTigaTitikTiga = async (req, res) => {
           luka_laki: Joi.number().min(0).optional(),
           luka_perempuan: Joi.number().min(0).optional(),
           false_emergency: Joi.number().min(0).optional(),
+        }).custom((value, helpers) => {
+          const totalPasien = (value.total_pasien_rujukan || 0) + (value.total_pasien_non_rujukan || 0);
+          const totalLuka = (value.luka_laki || 0) + (value.luka_perempuan || 0);
+          if (totalLuka > totalPasien) {
+            return helpers.error('any.custom', { message: 'Jumlah luka laki-laki dan perempuan tidak boleh melebihi total pasien rujukan dan non rujukan' });
+          }
+          return value;
         })
       )
       .required(),
@@ -555,6 +562,13 @@ export const updateDataRLTigaTitikTiga = async (req, res) => {
     luka_laki: Joi.number().required(),
     luka_perempuan: Joi.number().required(),
     false_emergency: Joi.number().required(),
+  }).custom((value, helpers) => {
+    const totalPasien = value.total_pasien_rujukan + value.total_pasien_non_rujukan;
+    const totalLuka = value.luka_laki + value.luka_perempuan;
+    if (totalLuka > totalPasien) {
+      return helpers.error('any.custom', { message: 'Jumlah luka laki-laki dan perempuan tidak boleh melebihi total pasien rujukan dan non rujukan' });
+    }
+    return value;
   });
 
   const { error, value } = schema.validate(req.body);
@@ -568,20 +582,20 @@ export const updateDataRLTigaTitikTiga = async (req, res) => {
   }
 
   try {
-    const update = await rlTigaTitikTigaDetail.update(
+    const [affectedRows] = await rlTigaTitikTigaDetail.update(
       {
-        total_pasien_rujukan: req.body.totalPasienRujukan,
-        total_pasien_non_rujukan: req.body.totalPasienNonRujukan,
-        tlp_dirawat: req.body.tlpDirawat,
-        tlp_dirujuk: req.body.tlpDirujuk,
-        tlp_pulang: req.body.tlpPulang,
-        m_igd_laki: req.body.mIgdLaki,
-        m_igd_perempuan: req.body.mIgdPerempuan,
-        doa_laki: req.body.doaLaki,
-        doa_perempuan: req.body.doaPerempuan,
-        luka_laki: req.body.lukaLaki,
-        luka_perempuan: req.body.lukaPerempuan,
-        false_emergency: req.body.falseEmergency,
+        total_pasien_rujukan: req.body.total_pasien_rujukan,
+        total_pasien_non_rujukan: req.body.total_pasien_non_rujukan,
+        tlp_dirawat: req.body.tlp_dirawat,
+        tlp_dirujuk: req.body.tlp_dirujuk,
+        tlp_pulang: req.body.tlp_pulang,
+        m_igd_laki: req.body.m_igd_laki,
+        m_igd_perempuan: req.body.m_igd_perempuan,
+        doa_laki: req.body.doa_laki,
+        doa_perempuan: req.body.doa_perempuan,
+        luka_laki: req.body.luka_laki,
+        luka_perempuan: req.body.luka_perempuan,
+        false_emergency: req.body.false_emergency,
         user_id: req.user.id,
       },
       {
@@ -592,9 +606,17 @@ export const updateDataRLTigaTitikTiga = async (req, res) => {
       }
     );
 
-    res.status(201).send({
+    if (affectedRows === 0) {
+      return res.status(404).send({
+        status: false,
+        message: "Data tidak ditemukan atau tidak ada perubahan",
+      });
+    }
+
+    res.status(200).send({
       status: true,
-      message: update,
+      message: "Data berhasil diperbaharui",
+      data: { affectedRows },
     });
   } catch (error) {
     res.status(500).send({
@@ -608,6 +630,100 @@ export const updateDataRLTigaTitikTiga = async (req, res) => {
 // Done
 export const deleteDataRLTigaTitikTiga = async (req, res) => {
   try {
+    const currentData = await rlTigaTitikTigaDetail.findOne({
+      where: {
+        id: req.params.id,
+        rs_id: req.user.satKerId,
+      },
+      include: {
+        model: jenisPelayananTigaTitikTiga,
+        attributes: ["id", "no", "nama"],
+        as: "jenis_pelayanan_rl_tiga_titik_tiga",
+      },
+    });
+
+
+    
+
+    if (!currentData) {
+      return res.status(404).send({
+        status: false,
+        message: "Data Not Found",
+      });
+    }
+
+    const childNo = currentData.jenis_pelayanan_rl_tiga_titik_tiga?.no || "";
+    let parentNo = null;
+    if (childNo.startsWith("1.")) {
+      parentNo = "1.";
+    } else if (childNo.startsWith("2.")) {
+      parentNo = "2.";
+    }
+
+    if (parentNo) {
+      const parent = await rlTigaTitikTigaDetail.findOne({
+        where: {
+          rs_id: req.user.satKerId,
+          tahun: currentData.tahun,
+          bulan: currentData.bulan,
+        },
+        include: {
+          model: jenisPelayananTigaTitikTiga,
+          as: "jenis_pelayanan_rl_tiga_titik_tiga",
+          where: { no: parentNo },
+          attributes: ["id", "no", "nama"],
+        },
+      });
+
+      if (parent) {
+        await rlTigaTitikTigaDetail.update(
+          {
+            total_pasien_rujukan:
+              Number(parent.total_pasien_rujukan || 0) -
+              Number(currentData.total_pasien_rujukan || 0),
+            total_pasien_non_rujukan:
+              Number(parent.total_pasien_non_rujukan || 0) -
+              Number(currentData.total_pasien_non_rujukan || 0),
+            tlp_dirawat:
+              Number(parent.tlp_dirawat || 0) -
+              Number(currentData.tlp_dirawat || 0),
+            tlp_dirujuk:
+              Number(parent.tlp_dirujuk || 0) -
+              Number(currentData.tlp_dirujuk || 0),
+            tlp_pulang:
+              Number(parent.tlp_pulang || 0) -
+              Number(currentData.tlp_pulang || 0),
+            m_igd_laki:
+              Number(parent.m_igd_laki || 0) -
+              Number(currentData.m_igd_laki || 0),
+            m_igd_perempuan:
+              Number(parent.m_igd_perempuan || 0) -
+              Number(currentData.m_igd_perempuan || 0),
+            doa_laki:
+              Number(parent.doa_laki || 0) -
+              Number(currentData.doa_laki || 0),
+            doa_perempuan:
+              Number(parent.doa_perempuan || 0) -
+              Number(currentData.doa_perempuan || 0),
+            luka_laki:
+              Number(parent.luka_laki || 0) -
+              Number(currentData.luka_laki || 0),
+            luka_perempuan:
+              Number(parent.luka_perempuan || 0) -
+              Number(currentData.luka_perempuan || 0),
+            false_emergency:
+              Number(parent.false_emergency || 0) -
+              Number(currentData.false_emergency || 0),
+          },
+          {
+            where: {
+              id: parent.id,
+            },
+          }
+        );
+      }
+    }
+
     const count = await rlTigaTitikTigaDetail.destroy({
       where: {
         id: req.params.id,
@@ -617,7 +733,7 @@ export const deleteDataRLTigaTitikTiga = async (req, res) => {
 
     if (count == 0) {
       res.status(404).send({
-        status: true,
+        status: false,
         message: "Data Not Found",
         data: {
           deleted_rows: count,

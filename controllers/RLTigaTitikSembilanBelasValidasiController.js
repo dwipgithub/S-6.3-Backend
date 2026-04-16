@@ -212,23 +212,40 @@ export const updateDataRLTigaTitikSembilanBelasValidasi = async (req, res) => {
       });
     }
 
-    let catatan = req.body.catatan;
-    if (req.body.statusValidasiId == 2) {
-      catatan = "";
+    let updateData = {
+      status_validasi_id: req.body.statusValidasiId,
+      user_id: req.user.id,
+    };
+
+    // hanya update catatan jika bukan status 2
+    if (req.body.statusValidasiId !== 2) {
+      updateData.catatan = req.body.catatan;
     }
 
-    await rlTigaTitikSembilanBelasValidasi.update(
-      {
-        status_validasi_id: req.body.statusValidasiId,
-        catatan: catatan,
-        user_id: req.user.id,
+    await rlTigaTitikSembilanBelasValidasi.update(updateData, {
+      where: {
+        id: req.params.id,
       },
-      {
-        where: {
-          id: req.params.id,
-        },
-      },
-    );
+    });
+
+    // let catatan = req.body.catatan;
+
+    // if (req.body.statusValidasiId == 2) {
+    //   catatan = "";
+    // }
+
+    // await rlTigaTitikSembilanBelasValidasi.update(
+    //   {
+    //     status_validasi_id: req.body.statusValidasiId,
+    //     catatan: catatan,
+    //     user_id: req.user.id,
+    //   },
+    //   {
+    //     where: {
+    //       id: req.params.id,
+    //     },
+    //   },
+    // );
 
     res.status(200).send({
       status: true,

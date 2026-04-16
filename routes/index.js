@@ -766,22 +766,94 @@ router.patch(
   updateDataRLTigaTitikTigaBelasValidasi,
 );
 
+// RL 3.10 Validasi
+
+router.get(
+  "/apisirs6v2/rltigatitiksepuluhvalidasi",
+  verifyToken,
+  getDataRLTigaTitikSepuluhValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitiksepuluhvalidasi",
+  verifyToken,
+  insertDataRLTigaTitikSepuluhValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitiksepuluhvalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikSepuluhValidasi
+);
+
+// RL 3.11 Validasi
+
+router.get(
+  "/apisirs6v2/rltigatitiksebelasvalidasi",
+  verifyToken,
+  getDataRLTigaTitikSebelasValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitiksebelasvalidasi",
+  verifyToken,
+  insertDataRLTigaTitikSebelasValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitiksebelasvalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikSebelasValidasi
+);
+
+// RL 3.12 Validasi
+
+router.get(
+  "/apisirs6v2/rltigatitikduabelasvalidasi",
+  verifyToken,
+  getDataRLTigaTitikDuaBelasValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitikduabelasvalidasi",
+  verifyToken,
+  insertDataRLTigaTitikDuaBelasValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitikduabelasvalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikDuaBelasValidasi
+);
+
+// RL 3.13 Validasi
+
+router.get(
+  "/apisirs6v2/rltigatitiktigabelasvalidasi",
+  verifyToken,
+  getDataRLTigaTitikTigaBelasValidasi
+);
+router.post(
+  "/apisirs6v2/rltigatitiktigabelasvalidasi",
+  verifyToken,
+  insertDataRLTigaTitikTigaBelasValidasi
+);
+router.patch(
+  "/apisirs6v2/rltigatitiktigabelasvalidasi/:id",
+  verifyToken,
+  updateDataRLTigaTitikTigaBelasValidasi
+);
+
 // RL 3.14 Validasi
 
 router.get(
   "/apisirs6v2/rltigatitikempatbelasvalidasi",
   verifyToken,
-  getDataRLTigaTitikEmpatBelasValidasi,
+  getDataRLTigaTitikEmpatBelasValidasi
 );
 router.post(
   "/apisirs6v2/rltigatitikempatbelasvalidasi",
   verifyToken,
-  insertDataRLTigaTitikEmpatBelasValidasi,
+  insertDataRLTigaTitikEmpatBelasValidasi
 );
 router.patch(
   "/apisirs6v2/rltigatitikempatbelasvalidasi/:id",
   verifyToken,
-  updateDataRLTigaTitikEmpatBelasValidasi,
+  updateDataRLTigaTitikEmpatBelasValidasi
 );
 
 // RL 3.15 Validasi
@@ -789,17 +861,17 @@ router.patch(
 router.get(
   "/apisirs6v2/rltigatitiklimabelasvalidasi",
   verifyToken,
-  getDataRLTigaTitikLimaBelasValidasi,
+  getDataRLTigaTitikLimaBelasValidasi
 );
 router.post(
   "/apisirs6v2/rltigatitiklimabelasvalidasi",
   verifyToken,
-  insertDataRLTigaTitikLimaBelasValidasi,
+  insertDataRLTigaTitikLimaBelasValidasi
 );
 router.patch(
   "/apisirs6v2/rltigatitiklimabelasvalidasi/:id",
   verifyToken,
-  updateDataRLTigaTitikLimaBelasValidasi,
+  updateDataRLTigaTitikLimaBelasValidasi
 );
 
 // RL 3.16 Validasi
@@ -807,17 +879,17 @@ router.patch(
 router.get(
   "/apisirs6v2/rltigatitikenambelasvalidasi",
   verifyToken,
-  getDataRLTigaTitikEnamBelasValidasi,
+  getDataRLTigaTitikEnamBelasValidasi
 );
 router.post(
   "/apisirs6v2/rltigatitikenambelasvalidasi",
   verifyToken,
-  insertDataRLTigaTitikEnamBelasValidasi,
+  insertDataRLTigaTitikEnamBelasValidasi
 );
 router.patch(
   "/apisirs6v2/rltigatitikenambelasvalidasi/:id",
   verifyToken,
-  updateDataRLTigaTitikEnamBelasValidasi,
+  updateDataRLTigaTitikEnamBelasValidasi
 );
 
 // RL 3.17 Validasi
@@ -825,17 +897,17 @@ router.patch(
 router.get(
   "/apisirs6v2/rltigatitiktujuhbelasvalidasi",
   verifyToken,
-  getDataRLTigaTitikTujuhBelasValidasi,
+  getDataRLTigaTitikTujuhBelasValidasi
 );
 router.post(
   "/apisirs6v2/rltigatitiktujuhbelasvalidasi",
   verifyToken,
-  insertDataRLTigaTitikTujuhBelasValidasi,
+  insertDataRLTigaTitikTujuhBelasValidasi
 );
 router.patch(
   "/apisirs6v2/rltigatitiktujuhbelasvalidasi/:id",
   verifyToken,
-  updateDataRLTigaTitikTujuhBelasValidasi,
+  updateDataRLTigaTitikTujuhBelasValidasi
 );
 
 // RL 3.18 Validasi
@@ -843,17 +915,17 @@ router.patch(
 router.get(
   "/apisirs6v2/rltigatitikdelapanbelasvalidasi",
   verifyToken,
-  getDataRLTigaTitikDelapanBelasValidasi,
+  getDataRLTigaTitikDelapanBelasValidasi
 );
 router.post(
   "/apisirs6v2/rltigatitikdelapanbelasvalidasi",
   verifyToken,
-  insertDataRLTigaTitikDelapanBelasValidasi,
+  insertDataRLTigaTitikDelapanBelasValidasi
 );
 router.patch(
   "/apisirs6v2/rltigatitikdelapanbelasvalidasi/:id",
   verifyToken,
-  updateDataRLTigaTitikDelapanBelasValidasi,
+  updateDataRLTigaTitikDelapanBelasValidasi
 );
 
 // RL 3.3
