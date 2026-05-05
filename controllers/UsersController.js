@@ -310,7 +310,9 @@ export const loginSSO = async (req, res) => {
 
     const email_sso = decrypted.email;
     const nama_sso = decrypted.name;
-    const org_sso = decrypted.organizationId;
+    // const org_sso = decrypted.organizationId;
+    const raw_org_sso = decrypted.organizationId;
+    const org_sso = sanitizeRsId(raw_org_sso);
     const type_sso = decrypted.organizationType;
     const org_name = decrypted.organizationName;
 
@@ -535,6 +537,20 @@ export const loginSSO = async (req, res) => {
     });
     return;
   }
+};
+
+const sanitizeRsId = (value) => {
+  if (value === null || value === undefined) return null;
+
+  // convert ke string + trim spasi depan belakang
+  let clean = String(value).trim();
+
+  // cek hanya angka
+  if (!/^[0-9]+$/.test(clean)) {
+    return null; // atau throw error
+  }
+
+  return clean;
 };
 
 function mapCategorySSO(category) {
