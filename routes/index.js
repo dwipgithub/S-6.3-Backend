@@ -53,6 +53,7 @@ import {
   insertDataRLTigaTitikLima,
   updateDataRLTigaTitikLima,
   deleteDataRLTigaTitikLima,
+  getDataRLTigaTitikLimaSatuSehat,
 } from "../controllers/RLTigaTitikLimaController.js";
 
 // RL 3.6
@@ -1046,6 +1047,12 @@ router.patch(
   verifyCsrfToken,
   verifyToken,
   updateDataRLTigaTitikLima,
+);
+
+router.get(
+  "/apisirs6v2/rltigatitiklimasatusehat",
+  verifyToken,
+  getDataRLTigaTitikLimaSatuSehat
 );
 
 // Jenis Kegiatan
