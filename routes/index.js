@@ -573,6 +573,7 @@ router.post(
   "/apisirs6v2/rltigatitikduavalidasi",
   verifyCsrfToken,
   verifyToken,
+  verifyHmac,
   insertDataRLTigaTitikDuaValidasi,
 );
 
