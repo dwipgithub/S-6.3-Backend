@@ -5,9 +5,22 @@ import {
   // get42,
   // get43,
 } from "../models/RLEmpatTitikSatuModel.js";
+
+import { rlEmpatTitikSatuSatuSehat } from "../models/RLEmpatTitikSatuSatuSehatModel.js";
+
 import Joi from "joi";
 import joiDate from "@joi/date";
 import { icd } from "../models/ICDModel.js";
+import { satu_sehat_id, users_sso } from "../models/UserModel.js";
+
+import {
+  isStale,
+  isSyncing,
+  doSync,
+  getLastSyncInfo,
+} from "../services/rlSync.service.js";
+
+const sseClients = new Map();
 
 export const getDataRLEmpatTitikSatu = (req, res) => {
   const joi = Joi.extend(joiDate);
@@ -1040,3 +1053,108 @@ export const deleteDataRLEmpatTitikSatu = async (req, res) => {
 //       })
 //   })
 // }
+
+export const getDataRLEmpatTitikSatuWithSatuSehat = async (req, res) => {
+  const joi = Joi.extend(joiDate);
+  const schema = joi.object({
+    rsId: joi.string().required(),
+    periode: joi.date().format("YYYY-MM").required(),
+    page: joi.number().min(1).default(1),
+    limit: joi.number().min(1).max(200).default(50),
+  });
+
+  const { error, value } = schema.validate(req.query);
+  if (error)
+    return res
+      .status(400)
+      .send({ status: false, message: error.details[0].message });
+
+  const { rsId, periode, page, limit } = value;
+
+  if (req.user.jenisUserId == 4 && rsId != req.user.satKerId) {
+    return res
+      .status(403)
+      .send({ status: false, message: "Kode RS Tidak Sesuai" });
+  }
+
+  const rsIdFinal = req.user.jenisUserId == 4 ? req.user.satKerId : rsId;
+  const periodeFormatted = periode;
+  const periodeShort = String(periode).substring(0, 7);
+
+  try {
+    const offset = (page - 1) * limit;
+
+    const satuSehat = await satu_sehat_id.findOne({
+      where: { kode_baru_faskes: rsIdFinal },
+      attributes: ["organization_id"],
+    });
+
+    if (!satuSehat) {
+      return res
+        .status(404)
+        .send({ status: false, message: "OrganizationId Tidak Ada" });
+    }
+
+    const organization_id = satuSehat.organization_id;
+
+    // Jalankan semua query DB + cek sync status secara paralel
+    const [rows, totalRows, syncInfo, currentlySyncing] = await Promise.all([
+      rlEmpatTitikSatuSatuSehat.findAll({
+        where: { organization_id, bulan_laporan: periodeFormatted },
+        limit,
+        offset,
+        order: [["id", "ASC"]],
+      }),
+      rlEmpatTitikSatuSatuSehat.count({
+        where: { organization_id, bulan_laporan: periodeFormatted },
+      }),
+      getLastSyncInfo(rsIdFinal, periodeShort),
+      isSyncing(rsIdFinal, periodeShort), // ← cukup panggil sekali di sini
+    ]);
+
+    // Kirim response ke FE
+    res.status(200).send({
+      status: true,
+      message: rows.length ? "data found" : "data not found",
+      data: rows,
+      pagination: {
+        page,
+        limit,
+        totalRows,
+        totalPages: Math.ceil(totalRows / limit),
+      },
+      sync: {
+        lastSync: syncInfo?.synced_at ?? null,
+        status: syncInfo?.status ?? "never",
+        totalData: syncInfo?.total_data ?? 0,
+        isUpdating: currentlySyncing, // ← pakai hasil yang sudah ada
+      },
+    });
+
+    // Cek stale & trigger background sync jika perlu
+    const stale = await isStale(rsIdFinal, periodeShort);
+
+    if (stale && !currentlySyncing) {
+      doSync(organization_id, periodeShort)
+        .then(() => notifySseClients(rsIdFinal, periodeShort))
+        .catch((err) =>
+          console.error(`[Sync BG Error] RS ${rsIdFinal}:`, err.message),
+        );
+    }
+  } catch (err) {
+    res.status(500).send({ status: false, message: err.message });
+  }
+};
+
+const notifySseClients = (rsId, periode) => {
+  const key = `${rsId}_${periode}`;
+  const clients = sseClients.get(key);
+  if (!clients?.size) return;
+  const payload = JSON.stringify({
+    event: "sync_done",
+    rsId,
+    periode,
+    at: new Date(),
+  });
+  clients.forEach((client) => client.write(`data: ${payload}\n\n`));
+};
