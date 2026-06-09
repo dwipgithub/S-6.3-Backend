@@ -328,6 +328,7 @@ import {
   insertDataRLEmpatTitikSatu,
   updateDataRLEmpatTitikSatu,
   getDataRLEmpatTitikSatuWithSatuSehat,
+  subscribeSyncStatus,
 } from "../controllers/RLEmpatTitikSatuController.js";
 
 // RL 4.2
@@ -1745,9 +1746,15 @@ router.patch(
 );
 
 router.get(
-  "/apisirs6v2/rlempatitiksatusatusehat",
+  "/apisirs6v2/rlempattitiksatusatusehat",
   verifyToken,
   getDataRLEmpatTitikSatuWithSatuSehat,
+);
+
+router.get(
+  "/apisirs6v2/rlempattitiksatusatusehatSubscribe",
+  verifyToken,
+  subscribeSyncStatus,
 );
 
 // RL 4.2
