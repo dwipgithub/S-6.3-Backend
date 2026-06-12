@@ -70,209 +70,323 @@ export const showUser = (req, res) => {
 //     }
 // }
 
+// export const login = async (req, res) => {
+//   const schema = Joi.object({
+//     userName: Joi.string().required(),
+//     password: Joi.string().required(),
+//     // reCaptchaToken:Joi.string()
+//     //     .required()
+//   });
+
+//   const { error, value } = schema.validate(req.body);
+
+//   if (error) {
+//     res.status(404).send({
+//       status: false,
+//       message: error.details[0].message,
+//     });
+//     return;
+//   }
+
+//   users
+//     .findAll({
+//       attributes: [
+//         "id",
+//         "nama",
+//         "email",
+//         "password",
+//         "satker_id",
+//         "jenis_user_id",
+//         "created_at",
+//         "modified_at",
+//       ],
+//       where: {
+//         email: req.body.userName,
+//         jenis_user_id: 4,
+//         is_active: 1,
+//       },
+//     })
+//     .then((results) => {
+//       if (!results.length) {
+//         res.status(404).send({
+//           status: false,
+//           message: "email not found",
+//         });
+//         return;
+//       }
+//       bcrypt.compare(
+//         req.body.password,
+//         results[0].password,
+//         (error, compareResult) => {
+//           if (compareResult == false) {
+//             res.status(404).send({
+//               status: false,
+//               message: "wrong password",
+//             });
+//             return;
+//           }
+//           const payloadObject = {
+//             id: results[0].id,
+//             nama: results[0].nama,
+//             email: results[0].email,
+//             satKerId: results[0].satker_id,
+//             jenisUserId: results[0].jenis_user_id,
+//           };
+
+//           const accessToken = jsonWebToken.sign(
+//             payloadObject,
+//             process.env.ACCESS_TOKEN_SECRET,
+//             { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN },
+//           );
+//           jsonWebToken.verify(
+//             accessToken,
+//             process.env.ACCESS_TOKEN_SECRET,
+//             (err, result) => {
+//               const refreshToken = jsonWebToken.sign(
+//                 payloadObject,
+//                 process.env.REFRESH_TOKEN_SECRET,
+//                 { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN },
+//               );
+//               users
+//                 .update(
+//                   { refresh_token: refreshToken },
+//                   {
+//                     where: {
+//                       id: results[0].id,
+//                     },
+//                   },
+//                 )
+//                 .then(() => {
+//                   res.cookie("refreshToken", refreshToken, {
+//                     httpOnly: true,
+//                     sameSite: "Strict",
+//                     secure: true,
+//                     maxAge: 6 * 60 * 60 * 1000,
+//                   });
+//                   res.status(201).send({
+//                     status: true,
+//                     message: "access token created",
+//                     data: {
+//                       access_token: accessToken,
+//                     },
+//                   });
+//                 })
+//                 .catch((err) => {
+//                   res.status(404).send({
+//                     status: false,
+//                     message: err,
+//                   });
+//                   return;
+//                 });
+//             },
+//           );
+//         },
+//       );
+//     })
+//     .catch((err) => {
+//       res.status(404).send({
+//         status: false,
+//         message: err,
+//       });
+//       return;
+//     });
+
+//   // const reCaptchaRes = await reCaptchaToken(req.body.reCaptchaToken)
+
+//   // if (reCaptchaRes.data.success === true) {
+//   //     users.findAll({
+//   //         attributes: ['id','nama','email','password', 'rs_id', 'jenis_user_id','created_at', 'modified_at'],
+//   //         where: {
+//   //             email: req.body.userName,
+//   //             jenis_user_id: 4
+//   //         }
+//   //     })
+//   //     .then((results) => {
+//   //         if (!results.length) {
+//   //             res.status(404).send({
+//   //                 status: false,
+//   //                 message: 'email not found'
+//   //             })
+//   //             return
+//   //         }
+//   //         bcrypt.compare(req.body.password, results[0].password, (error, compareResult) => {
+//   //             if (compareResult == false) {
+//   //                 res.status(404).send({
+//   //                     status: false,
+//   //                     message: 'wrong password'
+//   //                 })
+//   //                 return
+//   //             }
+//   //             const payloadObject = {
+//   //                 id: results[0].id,
+//   //                 nama: results[0].nama,
+//   //                 email: results[0].email,
+//   //                 rsId: results[0].rs_id,
+//   //                 jenisUserId: results[0].jenis_user_id
+//   //             }
+
+//   //             const accessToken = jsonWebToken.sign(payloadObject, process.env.ACCESS_TOKEN_SECRET, {expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN})
+//   //             jsonWebToken.verify(accessToken, process.env.ACCESS_TOKEN_SECRET, (err, result) => {
+//   //                 const refreshToken = jsonWebToken.sign(payloadObject, process.env.REFRESH_TOKEN_SECRET, {expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN})
+//   //                 users.update({refresh_token: refreshToken},{
+//   //                     where: {
+//   //                         id: results[0].id
+//   //                     }
+//   //                 })
+//   //                 .then(() => {
+//   //                     res.cookie('refreshToken', refreshToken, {
+//   //                         httpOnly: true,
+//   //                         // maxAge: 24 * 60 * 60 * 1000
+//   //                         maxAge: 1000 * 60 * 60 * 24
+//   //                     })
+//   //                     res.status(201).send({
+//   //                         status: true,
+//   //                         message: "access token created",
+//   //                         data: {
+//   //                             name: results[0].nama,
+//   //                             access_token: accessToken
+//   //                         }
+//   //                     })
+//   //                 })
+//   //                 .catch((err) => {
+//   //                     res.status(404).send({
+//   //                         status: false,
+//   //                         message: err
+//   //                     })
+//   //                     return
+//   //                 })
+//   //             })
+//   //         })
+//   //     })
+//   //     .catch((err) => {
+//   //         res.status(404).send({
+//   //             status: false,
+//   //             message: err
+//   //         })
+//   //         return
+//   //     })
+//   // } else {
+//   //     res.status(404).send({
+//   //         status: false,
+//   //         message: 're Captcha not valid'
+//   //     })
+//   // }
+// };
+
 export const login = async (req, res) => {
   const schema = Joi.object({
     userName: Joi.string().required(),
     password: Joi.string().required(),
-    // reCaptchaToken:Joi.string()
-    //     .required()
   });
 
-  const { error, value } = schema.validate(req.body);
+  const { error } = schema.validate(req.body);
 
   if (error) {
-    res.status(404).send({
+    return res.status(400).json({
       status: false,
       message: error.details[0].message,
     });
-    return;
   }
 
-  users
-    .findAll({
-      attributes: [
-        "id",
-        "nama",
-        "email",
-        "password",
-        "satker_id",
-        "jenis_user_id",
-        "created_at",
-        "modified_at",
-      ],
+  try {
+    const user = await users_sso.findOne({
       where: {
         email: req.body.userName,
         jenis_user_id: 4,
         is_active: 1,
       },
-    })
-    .then((results) => {
-      if (!results.length) {
-        res.status(404).send({
-          status: false,
-          message: "email not found",
-        });
-        return;
-      }
-      bcrypt.compare(
-        req.body.password,
-        results[0].password,
-        (error, compareResult) => {
-          if (compareResult == false) {
-            res.status(404).send({
-              status: false,
-              message: "wrong password",
-            });
-            return;
-          }
-          const payloadObject = {
-            id: results[0].id,
-            nama: results[0].nama,
-            email: results[0].email,
-            satKerId: results[0].satker_id,
-            jenisUserId: results[0].jenis_user_id,
-          };
-
-          const accessToken = jsonWebToken.sign(
-            payloadObject,
-            process.env.ACCESS_TOKEN_SECRET,
-            { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN },
-          );
-          jsonWebToken.verify(
-            accessToken,
-            process.env.ACCESS_TOKEN_SECRET,
-            (err, result) => {
-              const refreshToken = jsonWebToken.sign(
-                payloadObject,
-                process.env.REFRESH_TOKEN_SECRET,
-                { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN },
-              );
-              users
-                .update(
-                  { refresh_token: refreshToken },
-                  {
-                    where: {
-                      id: results[0].id,
-                    },
-                  },
-                )
-                .then(() => {
-                  res.cookie("refreshToken", refreshToken, {
-                    httpOnly: true,
-                    sameSite: "Strict",
-                    secure: true,
-                    maxAge: 6 * 60 * 60 * 1000,
-                  });
-                  res.status(201).send({
-                    status: true,
-                    message: "access token created",
-                    data: {
-                      access_token: accessToken,
-                    },
-                  });
-                })
-                .catch((err) => {
-                  res.status(404).send({
-                    status: false,
-                    message: err,
-                  });
-                  return;
-                });
-            },
-          );
-        },
-      );
-    })
-    .catch((err) => {
-      res.status(404).send({
-        status: false,
-        message: err,
-      });
-      return;
     });
 
-  // const reCaptchaRes = await reCaptchaToken(req.body.reCaptchaToken)
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: "email not found",
+      });
+    }
 
-  // if (reCaptchaRes.data.success === true) {
-  //     users.findAll({
-  //         attributes: ['id','nama','email','password', 'rs_id', 'jenis_user_id','created_at', 'modified_at'],
-  //         where: {
-  //             email: req.body.userName,
-  //             jenis_user_id: 4
-  //         }
-  //     })
-  //     .then((results) => {
-  //         if (!results.length) {
-  //             res.status(404).send({
-  //                 status: false,
-  //                 message: 'email not found'
-  //             })
-  //             return
-  //         }
-  //         bcrypt.compare(req.body.password, results[0].password, (error, compareResult) => {
-  //             if (compareResult == false) {
-  //                 res.status(404).send({
-  //                     status: false,
-  //                     message: 'wrong password'
-  //                 })
-  //                 return
-  //             }
-  //             const payloadObject = {
-  //                 id: results[0].id,
-  //                 nama: results[0].nama,
-  //                 email: results[0].email,
-  //                 rsId: results[0].rs_id,
-  //                 jenisUserId: results[0].jenis_user_id
-  //             }
+    // Cegah error bcrypt ketika password null (user SSO)
+    if (!user.password) {
+      return res.status(403).json({
+        status: false,
+        message:
+          "akun ini terdaftar melalui SSO, silakan login menggunakan SSO",
+      });
+    }
 
-  //             const accessToken = jsonWebToken.sign(payloadObject, process.env.ACCESS_TOKEN_SECRET, {expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN})
-  //             jsonWebToken.verify(accessToken, process.env.ACCESS_TOKEN_SECRET, (err, result) => {
-  //                 const refreshToken = jsonWebToken.sign(payloadObject, process.env.REFRESH_TOKEN_SECRET, {expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN})
-  //                 users.update({refresh_token: refreshToken},{
-  //                     where: {
-  //                         id: results[0].id
-  //                     }
-  //                 })
-  //                 .then(() => {
-  //                     res.cookie('refreshToken', refreshToken, {
-  //                         httpOnly: true,
-  //                         // maxAge: 24 * 60 * 60 * 1000
-  //                         maxAge: 1000 * 60 * 60 * 24
-  //                     })
-  //                     res.status(201).send({
-  //                         status: true,
-  //                         message: "access token created",
-  //                         data: {
-  //                             name: results[0].nama,
-  //                             access_token: accessToken
-  //                         }
-  //                     })
-  //                 })
-  //                 .catch((err) => {
-  //                     res.status(404).send({
-  //                         status: false,
-  //                         message: err
-  //                     })
-  //                     return
-  //                 })
-  //             })
-  //         })
-  //     })
-  //     .catch((err) => {
-  //         res.status(404).send({
-  //             status: false,
-  //             message: err
-  //         })
-  //         return
-  //     })
-  // } else {
-  //     res.status(404).send({
-  //         status: false,
-  //         message: 're Captcha not valid'
-  //     })
-  // }
+    const compareResult = await bcrypt.compare(
+      req.body.password,
+      user.password,
+    );
+
+    if (!compareResult) {
+      return res.status(401).json({
+        status: false,
+        message: "wrong password",
+      });
+    }
+
+    const accessPayload = {
+      id: user.id,
+      nama: user.nama,
+      email: user.email,
+      satKerId: user.rs_id,
+      jenisUserId: user.jenis_user_id,
+    };
+
+    // Refresh payload hanya id, sama seperti SSO
+    const refreshPayload = {
+      id: user.id,
+    };
+
+    // Masing-masing di-sign sekali, simpan ke variabel
+    const accessToken = jsonWebToken.sign(
+      accessPayload,
+      process.env.ACCESS_TOKEN_SECRET,
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRESIN },
+    );
+
+    const refreshToken = jsonWebToken.sign(
+      refreshPayload,
+      process.env.REFRESH_TOKEN_SECRET,
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRESIN },
+    );
+
+    // Pakai variabel yang sama — token DB & response dijamin sama
+    await users_sso.update(
+      { refresh_token: refreshToken },
+      { where: { id: user.id } },
+    );
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      sameSite: "Strict",
+      secure: true,
+      maxAge: 6 * 60 * 60 * 1000,
+    });
+
+    const csrfToken = crypto.randomUUID();
+    res.cookie("XSRF-TOKEN", csrfToken, {
+      httpOnly: false,
+      sameSite: "Strict",
+      secure: true,
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "login success",
+      data: {
+        access_token: accessToken,
+        csrfToken,
+      },
+    });
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
+    return res.status(500).json({
+      status: false,
+      message: err.message,
+    });
+  }
 };
-
 export const loginSSO = async (req, res) => {
   const token = req.query.token;
   const t = await databaseSIRS.transaction();
