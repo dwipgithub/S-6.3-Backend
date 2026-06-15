@@ -329,6 +329,7 @@ import {
   insertDataRLEmpatTitikSatu,
   updateDataRLEmpatTitikSatu,
   getDataRLEmpatTitikSatuWithSatuSehat,
+  subscribeSyncStatus,
 } from "../controllers/RLEmpatTitikSatuController.js";
 
 // RL 4.2
@@ -498,7 +499,7 @@ const router = express.Router();
 router.post("/apisirs6v2/validasi", verifyToken, insertValidasi);
 
 // Token
-// router.post("/apisirs6v2/login", login);
+router.post("/apisirs6v2/loginsirs", login);
 router.delete("/apisirs6v2/logout", verifyCsrfToken, logout);
 router.get("/apisirs6v2/token", refreshToken);
 
@@ -1752,9 +1753,15 @@ router.patch(
 );
 
 router.get(
-  "/apisirs6v2/rlempatitiksatusatusehat",
+  "/apisirs6v2/rlempattitiksatusatusehat",
   verifyToken,
   getDataRLEmpatTitikSatuWithSatuSehat,
+);
+
+router.get(
+  "/apisirs6v2/rlempattitiksatusatusehatSubscribe",
+  verifyToken,
+  subscribeSyncStatus,
 );
 
 // RL 4.2

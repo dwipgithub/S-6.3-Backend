@@ -1078,8 +1078,8 @@ export const getDataRLEmpatTitikSatuWithSatuSehat = async (req, res) => {
   }
 
   const rsIdFinal = req.user.jenisUserId == 4 ? req.user.satKerId : rsId;
-  const periodeFormatted = periode;
-  const periodeShort = String(periode).substring(0, 7);
+  const periodeFormatted = req.query.periode;
+  const periodeShort = req.query.periode;
 
   try {
     const offset = (page - 1) * limit;
@@ -1095,7 +1095,7 @@ export const getDataRLEmpatTitikSatuWithSatuSehat = async (req, res) => {
         .send({ status: false, message: "OrganizationId Tidak Ada" });
     }
 
-    const organization_id = satuSehat.organization_id;
+    const organization_id = satuSehat.organization_id?.substring(0, 9);
 
     // Jalankan semua query DB + cek sync status secara paralel
     const [rows, totalRows, syncInfo, currentlySyncing] = await Promise.all([
@@ -1108,8 +1108,8 @@ export const getDataRLEmpatTitikSatuWithSatuSehat = async (req, res) => {
       rlEmpatTitikSatuSatuSehat.count({
         where: { organization_id, bulan_laporan: periodeFormatted },
       }),
-      getLastSyncInfo(rsIdFinal, periodeShort),
-      isSyncing(rsIdFinal, periodeShort), // ← cukup panggil sekali di sini
+      getLastSyncInfo(organization_id, periodeShort),
+      isSyncing(organization_id, periodeShort), // ← cukup panggil sekali di sini
     ]);
 
     // Kirim response ke FE
@@ -1132,11 +1132,11 @@ export const getDataRLEmpatTitikSatuWithSatuSehat = async (req, res) => {
     });
 
     // Cek stale & trigger background sync jika perlu
-    const stale = await isStale(rsIdFinal, periodeShort);
+    const stale = await isStale(organization_id, periodeShort);
 
     if (stale && !currentlySyncing) {
       doSync(organization_id, periodeShort)
-        .then(() => notifySseClients(rsIdFinal, periodeShort))
+        .then(() => notifySseClients(organization_id, periodeShort))
         .catch((err) =>
           console.error(`[Sync BG Error] RS ${rsIdFinal}:`, err.message),
         );
@@ -1144,6 +1144,28 @@ export const getDataRLEmpatTitikSatuWithSatuSehat = async (req, res) => {
   } catch (err) {
     res.status(500).send({ status: false, message: err.message });
   }
+};
+
+export const subscribeSyncStatus = (req, res) => {
+  const { rsId, periode } = req.query;
+  const key = `${rsId}_${periode}`;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  // Simpan koneksi
+  if (!sseClients.has(key)) sseClients.set(key, new Set());
+  sseClients.get(key).add(res);
+
+  // Ping tiap 30 detik supaya koneksi tidak putus
+  const ping = setInterval(() => res.write(": ping\n\n"), 30000);
+
+  req.on("close", () => {
+    clearInterval(ping);
+    sseClients.get(key)?.delete(res);
+  });
 };
 
 const notifySseClients = (rsId, periode) => {

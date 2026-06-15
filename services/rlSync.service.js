@@ -7,9 +7,9 @@ import { Op } from "sequelize"; // ← tambahkan ini
 const STALE_MINUTES = parseInt(process.env.SYNC_STALE_MINUTES) || 30;
 const TIPE_RL = "rl_4_1";
 
-export const isStale = async (rsId, periode) => {
+export const isStale = async (orgId, periode) => {
   const log = await syncLog.findOne({
-    where: { rs_id: rsId, tipe_rl: TIPE_RL, periode, status: "success" },
+    where: { orgId: orgId, tipe_rl: TIPE_RL, periode, status: "success" },
     order: [["synced_at", "DESC"]],
   });
   if (!log) return true;
@@ -18,10 +18,10 @@ export const isStale = async (rsId, periode) => {
   );
 };
 
-export const isSyncing = async (rsId, periode) => {
+export const isSyncing = async (orgId, periode) => {
   const log = await syncLog.findOne({
     where: {
-      rs_id: rsId,
+      orgId: orgId,
       tipe_rl: TIPE_RL,
       periode,
       status: "syncing",
@@ -31,29 +31,47 @@ export const isSyncing = async (rsId, periode) => {
   return !!log;
 };
 
-export const getLastSyncInfo = async (rsId, periode) => {
+export const getLastSyncInfo = async (orgId, periode) => {
   return await syncLog.findOne({
-    where: { rs_id: rsId, tipe_rl: TIPE_RL, periode },
+    where: { orgId: orgId, tipe_rl: TIPE_RL, periode },
     order: [["synced_at", "DESC"]],
     attributes: ["status", "synced_at", "total_data", "error_msg"],
   });
 };
 
 export const doSync = async (organization_id, periode) => {
-  // ← ganti parameter
   const logEntry = await syncLog.create({
-    rs_id: organization_id, // simpan organization_id di kolom rs_id
+    orgId: organization_id,
     tipe_rl: TIPE_RL,
     periode,
     status: "syncing",
   });
 
   try {
-    const rawData = await fetchRL41FromSatuSehat(organization_id, periode); // ← sesuaikan
-    const dataArray = Array.isArray(rawData) ? rawData : (rawData.data ?? []);
+    const rawData = await fetchRL41FromSatuSehat(organization_id, periode);
 
-    const mapped = dataArray.map(transformItem); // ← tambahkan transformItem
+    if (!rawData || rawData.status === 404 || rawData.data === null) {
+      await logEntry.update({
+        status: "success", // tetap success, bukan failed
+        total_data: 0,
+        synced_at: new Date(),
+        error_msg: rawData?.message ?? "data not found",
+      });
+      return { success: true, total: 0 };
+    }
 
+    const dataArray = Array.isArray(rawData.data) ? rawData.data : [];
+
+    if (dataArray.length === 0) {
+      await logEntry.update({
+        status: "success",
+        total_data: 0,
+        synced_at: new Date(),
+      });
+      return { success: true, total: 0 };
+    }
+
+    const mapped = dataArray.map(transformItem);
     await rlEmpatTitikSatuSatuSehat.bulkCreate(mapped, {
       updateOnDuplicate: Object.keys(mapped[0]).filter((k) => k !== "id"),
     });
@@ -65,6 +83,21 @@ export const doSync = async (organization_id, periode) => {
     });
     return { success: true, total: mapped.length };
   } catch (err) {
+    const errStatus = err.response?.status || err.status;
+    const errData = err.response?.data;
+
+    // Jika terdeteksi 404 dari response SatuSehat, handle sebagai "success" dengan 0 data
+    if (errStatus === 404 || errData?.status === 404) {
+      await logEntry.update({
+        status: "success", // Tetap dianggap sukses karena hanya data kosong/tidak ada
+        total_data: 0,
+        synced_at: new Date(),
+        error_msg: errData?.message ?? "data not found",
+      });
+      return { success: true, total: 0 };
+    }
+
+    // Jika benar-benar error sistem (misal: network timeout, DB error, dll) baru set failed
     await logEntry.update({ status: "failed", error_msg: err.message });
     throw err;
   }

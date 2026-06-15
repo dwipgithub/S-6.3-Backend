@@ -6,7 +6,7 @@ export const syncLog = databaseSIRS.define(
   "rl_sync_log",
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    rs_id: { type: DataTypes.STRING, allowNull: false },
+    orgId: { type: DataTypes.STRING, allowNull: false },
     tipe_rl: { type: DataTypes.STRING, allowNull: false },
     periode: { type: DataTypes.STRING, allowNull: false },
     status: { type: DataTypes.ENUM("syncing", "success", "failed") },
