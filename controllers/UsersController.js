@@ -360,7 +360,8 @@ export const login = async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       sameSite: "Strict",
-      secure: true,
+      // secure: true,
+      secure: false, // sementara non-https untuk testing di localhost
       maxAge: 6 * 60 * 60 * 1000,
     });
 
@@ -368,7 +369,8 @@ export const login = async (req, res) => {
     res.cookie("XSRF-TOKEN", csrfToken, {
       httpOnly: false,
       sameSite: "Strict",
-      secure: true,
+      // secure: true,
+      secure: false, // sementara non-https untuk testing di localhost
     });
 
     return res.status(200).json({
@@ -522,7 +524,8 @@ export const loginSSO = async (req, res) => {
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       sameSite: "Strict",
-      secure: true,
+      // secure: true,
+      secure: false, // sementara non-https untuk testing di localhost
       maxAge: 6 * 60 * 60 * 1000,
     });
 
@@ -530,7 +533,8 @@ export const loginSSO = async (req, res) => {
     res.cookie("XSRF-TOKEN", csrfToken, {
       httpOnly: false,
       sameSite: "Strict",
-      secure: true,
+      // secure: true,
+      secure: false, // sementara non-https untuk testing di localhost
     });
 
     return res.status(200).json({
