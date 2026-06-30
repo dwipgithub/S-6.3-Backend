@@ -10,15 +10,39 @@ import { jenisSpesialisTigaTitikSepuluh } from "../models/JenisSpesialisTigaTiti
 
 //new-----------------------------------------------------------------------------------------------------------
 export const getDataRLTigaTitikSepuluh = (req, res) => {
-  let where = { rs_id: req.user.satKerId };
+  // let where = { rs_id: req.user.satKerId };
+  const { rsId, tahun, bulan } = req.query;
 
-  if (req.query.tahun) where.tahun = req.query.tahun;
-  if (req.query.bulan) where.bulan = req.query.bulan;
+  let whereClause = {};
+
+  if (req.user.jenisUserId == 4) {
+    if (rsId != req.user.satKerId) {
+      return res.status(403).send({
+        status: false,
+        message: "Kode RS Tidak Sesuai",
+      });
+    }
+
+    whereClause = {
+      rs_id: req.user.satKerId,
+      tahun: tahun,
+      bulan: bulan,
+    };
+  } else {
+    whereClause = {
+      rs_id: rsId,
+      tahun: tahun,
+      bulan: bulan,
+    };
+  }
+
+  // if (req.query.tahun) where.tahun = req.query.tahun;
+  // if (req.query.bulan) where.bulan = req.query.bulan;
 
   rlTigaTitikSepuluh
     .findAll({
       attributes: ["id", "tahun", "bulan"],
-      where: where,
+      where: whereClause,
       include: {
         model: rlTigaTitikSepuluhDetail,
         include: {
@@ -194,7 +218,7 @@ export const insertDataRLTigaTitikSepuluh = async (req, res) => {
           keluar_pasien_datang_sendiri: Joi.number().min(0),
           keluar_total_keluar: Joi.number().min(0),
           keluar_diterima_kembali: Joi.number().min(0),
-        })
+        }),
       )
       .required(),
   });
@@ -245,7 +269,7 @@ export const insertDataRLTigaTitikSepuluh = async (req, res) => {
         tahun: req.body.tahun,
         bulan: req.body.bulan,
       },
-      { transaction }
+      { transaction },
     );
 
     const dataDetail = req.body.data.map((value, index) => {
@@ -461,7 +485,7 @@ export const updateDataRLTigaTitikSepuluh = async (req, res) => {
           id: req.params.id,
           rs_id: req.user.satKerId,
         },
-      }
+      },
     );
     res.status(200).json({
       status: true,

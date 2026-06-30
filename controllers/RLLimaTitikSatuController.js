@@ -5,7 +5,7 @@ import joiDate from "@joi/date";
 import {
   rlLimaTitikSatuDetail,
   rlLimaTitikSatuHeader,
-  rlLimaTitikSatuSatuSehat
+  rlLimaTitikSatuSatuSehat,
 } from "../models/RLLimaTitikSatuModel.js";
 import { satu_sehat_id, users_sso } from "../models/UserModel.js";
 import axios from "axios";
@@ -19,7 +19,7 @@ export const getDataRLLimaTitikSatu = (req, res) => {
   const joi = Joi.extend(joiDate);
   const schema = joi.object({
     rsId: joi.string().required(),
-    periode: joi.date().format("YYYY-M").required(),
+    periode: joi.date().format("YYYY-MM").required(),
     page: joi.number(),
     limit: joi.number(),
   });
@@ -69,7 +69,7 @@ export const getDataRLLimaTitikSatu = (req, res) => {
     .then((results) => {
       // const plainResults = results.map(r => r.toJSON()); // <-- ini penting
       const jsonString = JSON.stringify(results);
-      const size = Buffer.byteLength(jsonString, 'utf8');
+      const size = Buffer.byteLength(jsonString, "utf8");
 
       res.status(200).send({
         status: true,
@@ -89,6 +89,85 @@ export const getDataRLLimaTitikSatu = (req, res) => {
       });
       return;
     });
+};
+
+export const getDataRLLimaTitikSatuPaging = async (req, res) => {
+  const joi = Joi.extend(joiDate);
+  const schema = joi.object({
+    rsId: joi.string().required(),
+    periode: joi.date().format("YYYY-MM").required(),
+    page: joi.number().min(1).default(1),
+    limit: joi.number().min(1).max(200).default(50),
+  });
+  const { error, value } = schema.validate(req.query);
+  if (error) {
+    res.status(404).send({
+      status: false,
+      message: error.details[0].message,
+    });
+    return;
+  }
+  let whereClause = {};
+  if (req.user.jenisUserId == 4) {
+    if (req.query.rsId != req.user.satKerId) {
+      res.status(404).send({
+        status: false,
+        message: "Kode RS Tidak Sesuai",
+      });
+      return;
+    }
+    whereClause = {
+      rs_id: req.user.satKerId,
+      periode: req.query.periode,
+    };
+  } else {
+    whereClause = {
+      rs_id: req.query.rsId,
+      periode: req.query.periode,
+    };
+  }
+
+  const { page, limit, rsId, periode } = value;
+  const offset = (page - 1) * limit;
+
+  try {
+    const rows = await rlLimaTitikSatuDetail.findAll({
+      include: {
+        model: icd,
+        attributes: [
+          "icd_code",
+          "description_code",
+          "icd_code_group",
+          "description_code_group",
+        ],
+      },
+      where: whereClause,
+      limit,
+      offset,
+      order: [["id", "ASC"]],
+    });
+
+    const totalRows = await rlLimaTitikSatuDetail.count({
+      where: whereClause,
+    });
+
+    return res.status(200).send({
+      status: true,
+      message: "data found",
+      data: rows,
+      pagination: {
+        page,
+        limit,
+        totalRows,
+        totalPages: Math.ceil(totalRows / limit),
+      },
+    });
+  } catch (err) {
+    return res.status(422).send({
+      status: false,
+      message: err.message,
+    });
+  }
 };
 
 export const getDataRLLimaTitikSatuById = (req, res) => {
@@ -193,7 +272,7 @@ export const insertdataRLLimaTitikSatu = async (req, res) => {
             jumlah_kunjungan_L: Joi.number().min(0).required(),
             jumlah_kunjungan_P: Joi.number().min(0).required(),
           })
-          .required()
+          .required(),
       )
       .required(),
   });
@@ -222,7 +301,7 @@ export const insertdataRLLimaTitikSatu = async (req, res) => {
         periode: periode,
         user_id: req.user.id,
       },
-      { transaction }
+      { transaction },
     );
 
     const dataDetail = req.body.data.map((value, index) => {
@@ -428,7 +507,7 @@ export const insertdataRLLimaTitikSatu = async (req, res) => {
                   "jumlah_kunjungan_P",
                   "total_jumlah_kunjungan",
                 ],
-              }
+              },
             );
             await transaction.commit();
             res.status(201).send({
@@ -799,7 +878,7 @@ export const getDataRLLimaTitikSatuSatuSehat = async (req, res) => {
           headers: {
             "X-API-Key": process.env.SATUSEHAT_API_KEY,
           },
-        }
+        },
       );
       const records = response.data?.data?.records;
       // // SAVE DATA KE DB
