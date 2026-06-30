@@ -4,8 +4,11 @@ import Joi from "joi";
 import {
   rlTigaTitikTiga,
   rlTigaTitikTigaDetail,
+  RLTigaTitikTigaSatusehat,
 } from "../models/RLTigaTitikTiga.js";
 import { jenisPelayananTigaTitikTiga } from "../models/JenisPelayananTigaTitikTiga.js";
+import axios from "axios";
+import { satu_sehat_id } from "../models/UserModel.js";
 
 //new
 
@@ -752,6 +755,234 @@ export const deleteDataRLTigaTitikTiga = async (req, res) => {
     res.status(500).send({
       status: false,
       message: error,
+    });
+  }
+};
+
+export const getDataRLTigaTitikTigaSatuSehat = async (req, res) => {
+  try {
+    const periodeParam = (req.query.month_year || req.query.periode || "").toString().trim();
+
+    if (!periodeParam) {
+      return res.status(400).json({
+        status: false,
+        message: "Parameter 'periode' wajib diisi.",
+      });
+    }
+
+    const matchMonth =
+      periodeParam.match(/^(\d{4})-(\d{2})$/) ||
+      periodeParam.match(/^(\d{4})-(\d{2})-\d{2}$/);
+
+    if (!matchMonth) {
+      return res.status(400).json({
+        status: false,
+        message: "Format periode harus YYYY-MM.",
+      });
+    }
+
+    const monthYear = `${matchMonth[1]}-${matchMonth[2]}`;
+
+    const baseUrl =
+      process.env.SATUSEHAT_BASE_URL || "https://api-dev.dto.kemkes.go.id/fhir-sirs";
+
+    const apiKeyFromHeader = (req.headers["x-api-key"] || "").toString().trim();
+    const apiKey = apiKeyFromHeader || process.env.SATUSEHAT_API_KEY;
+
+    if (!apiKey) {
+      return res.status(500).json({
+        status: false,
+        message: "API key tidak tersedia.",
+      });
+    }
+
+    const koders = req.query.rsId;
+
+    if (!koders) {
+      return res.status(401).json({
+        status: false,
+        message: "Session user tidak ditemukan.",
+      });
+    }
+
+    const satuSehat = await satu_sehat_id.findOne({
+      where: {
+        kode_baru_faskes: koders,
+      },
+      attributes: ["organization_id"],
+    });
+
+    if (!satuSehat) {
+      return res.status(404).json({
+        status: false,
+        message: "OrganizationId Tidak Ada",
+      });
+    }
+
+    const organizationIdFinal = satuSehat.organization_id;
+
+    const cleanBaseUrl = baseUrl
+      .replace(/\/?v1\/rlreport\/?$/, "")
+      .replace(/\/$/, "");
+
+    const url =
+      `${cleanBaseUrl}/v1/rlreport/rl33` +
+      `?month_year=${encodeURIComponent(monthYear)}` +
+      `&ihs_organization=${encodeURIComponent(organizationIdFinal)}`;
+
+    const response = await axios.get(url, {
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": apiKey,
+      },
+    });
+
+    const raw = response?.data;
+    const items = Array.isArray(raw?.data?.data_pelayanan)
+      ? raw.data.data_pelayanan
+      : [];
+
+    if (!items || items.length === 0) {
+      return res.status(200).json({
+        status: true,
+        message: "Data belum tersedia untuk periode ini.",
+        meta: {
+          parsed_count: 0,
+          inserted_count: 0,
+          updated_count: 0,
+          skipped_count: 0,
+        },
+        data: [],
+      });
+    }
+
+    let insertedCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+
+    for (const item of items) {
+      const payload = {
+        month_year: monthYear,
+        ihs_organization: organizationIdFinal,
+        kategori: (item?.kategori || "").toString().trim(),
+        jenis_pelayanan: (item?.jenis_pelayanan || "").toString().trim(),
+        total_pasien_rujukan: Number(item?.total_pasien_rujukan ?? 0),
+        total_pasien_non_rujukan: Number(item?.total_pasien_non_rujukan ?? 0),
+        tindak_lanjut_dirawat: Number(item?.tindak_lanjut_dirawat ?? 0),
+        tindak_lanjut_dirujuk: Number(item?.tindak_lanjut_dirujuk ?? 0),
+        tindak_lanjut_pulang: Number(item?.tindak_lanjut_pulang ?? 0),
+        mati_di_igd_laki_laki: Number(item?.mati_di_igd_laki_laki ?? 0),
+        mati_di_igd_perempuan: Number(item?.mati_di_igd_perempuan ?? 0),
+        doa_laki_laki: Number(item?.doa_laki_laki ?? 0),
+        doa_perempuan: Number(item?.doa_perempuan ?? 0),
+        luka_luka_laki_laki: Number(item?.luka_luka_laki_laki ?? 0),
+        luka_luka_perempuan: Number(item?.luka_luka_perempuan ?? 0),
+        false_emergency: Number(item?.false_emergency ?? 0),
+      };
+
+      if (!payload.month_year || !payload.ihs_organization || !payload.kategori || !payload.jenis_pelayanan) {
+        skippedCount += 1;
+        continue;
+      }
+
+      const existing = await RLTigaTitikTigaSatusehat.findOne({
+        where: {
+          month_year: payload.month_year,
+          ihs_organization: payload.ihs_organization,
+          kategori: payload.kategori,
+          jenis_pelayanan: payload.jenis_pelayanan,
+        },
+      });
+
+      if (existing) {
+        await existing.update(payload);
+        updatedCount += 1;
+      } else {
+        await RLTigaTitikTigaSatusehat.create(payload);
+        insertedCount += 1;
+      }
+    }
+
+    const savedRows = await RLTigaTitikTigaSatusehat.findAll({
+      where: {
+        month_year: monthYear,
+        ihs_organization: organizationIdFinal,
+      },
+      order: [["kategori", "ASC"], ["jenis_pelayanan", "ASC"]],
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "success",
+      meta: {
+        parsed_count: items.length,
+        inserted_count: insertedCount,
+        updated_count: updatedCount,
+        skipped_count: skippedCount,
+      },
+      data: savedRows.map((row) => row.toJSON()),
+    });
+  } catch (err) {
+    const statusCode = err?.response?.status;
+
+    if (statusCode === 404) {
+      return res.status(200).json({
+        status: true,
+        message: "Data belum tersedia untuk periode ini.",
+        meta: {
+          parsed_count: 0,
+          inserted_count: 0,
+          updated_count: 0,
+          skipped_count: 0,
+        },
+        data: [],
+      });
+    }
+
+    return res.status(500).json({
+      status: false,
+      message: "Gagal memproses data RL 3.3 Satusehat",
+      detail: err?.response?.data || err?.message,
+    });
+  }
+};
+
+export const getDataRLTigaTitikTigaSatusehatLocal = async (req, res) => {
+  try {
+    const where = {};
+
+    if (req.query.month_year) {
+      where.month_year = req.query.month_year;
+    }
+
+    if (req.query.rsId) {
+      const satuSehat = await satu_sehat_id.findOne({
+        where: { kode_baru_faskes: req.query.rsId },
+        attributes: ["organization_id"],
+      });
+
+      if (satuSehat) {
+        where.ihs_organization = satuSehat.organization_id;
+      }
+    } else if (req.query.ihs_organization) {
+      where.ihs_organization = req.query.ihs_organization;
+    }
+
+    const data = await RLTigaTitikTigaSatusehat.findAll({
+      where,
+      order: [["kategori", "ASC"], ["jenis_pelayanan", "ASC"]],
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "data found",
+      data,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: false,
+      message: "Gagal mengambil data RL 3.3 Satusehat lokal",
+      detail: err.message,
     });
   }
 };

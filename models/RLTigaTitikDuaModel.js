@@ -208,3 +208,158 @@ export const show = (id, callback) => {
         }
     )
 }
+
+export const RLTigaTitikDuaSatusehat = databaseSIRS.define(
+    'rl_tiga_titik_dua_satusehat',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true
+        },
+
+        bulan_laporan: {
+            type: DataTypes.STRING(7),
+            allowNull: false,
+            unique: 'uq_rl32'
+        },
+
+        organization_id: {
+            type: DataTypes.STRING(50),
+            allowNull: false,
+            unique: 'uq_rl32'
+        },
+
+        jenis_pelayanan: {
+            type: DataTypes.STRING(100),
+            allowNull: false,
+            unique: 'uq_rl32'
+        },
+
+        code: {
+            type: DataTypes.STRING(50),
+            allowNull: false,
+            unique: 'uq_rl32'
+        },
+
+        pasien_awal_bulan: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        pasien_masuk: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        pasien_pindahan: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        pasien_dipindahkan: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        pasien_keluar_hidup: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        mati_lk_kurang_48_jam: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        mati_lk_lebih_sama_48_jam: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        mati_pr_kurang_48_jam: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        mati_pr_lebih_sama_48_jam: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        jumlah_lama_dirawat: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        pasien_akhir_bulan: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        jumlah_hari_perawatan: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        hari_vvip: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        hari_vip: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        hari_kelas_1: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        hari_kelas_2: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        hari_kelas_3: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        hari_kelas_khusus: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+
+        alokasi_tempat_tidur_awal_bulan: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        }
+    },
+    {
+        tableName: 'rl_tiga_titik_dua_satusehat',
+        timestamps: true,
+        createdAt: 'created_at',
+        updatedAt: 'modified_at'
+    }
+)

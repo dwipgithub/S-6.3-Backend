@@ -70,3 +70,65 @@ jenisKegiatan.hasMany(rlTigaTitikLimaDetail, {
 rlTigaTitikLimaDetail.belongsTo(jenisKegiatan, {
     foreignKey:'jenis_kegiatan_id'
 })
+
+export const RLTigaTitikLimaSatusehat = databaseSIRS.define(
+    'rl_tiga_titik_lima_satusehat',
+    {
+        id: {
+            type: DataTypes.INTEGER,
+            primaryKey: true,
+            autoIncrement: true
+        },
+        bulan_laporan: {
+            type: DataTypes.DATEONLY,
+            allowNull: false,
+            unique: 'uq_rl35'
+        },
+        organization_id: {
+            type: DataTypes.STRING(50),
+            allowNull: false,
+            unique: 'uq_rl35'
+        },
+        jenis_kegiatan: {
+            type: DataTypes.STRING(255),
+            allowNull: false,
+            unique: 'uq_rl35'
+        },
+        kunjungan_dalam_kab_kota_laki_laki: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+        kunjungan_dalam_kab_kota_perempuan: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+        kunjungan_luar_kab_kota_laki_laki: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+        kunjungan_luar_kab_kota_perempuan: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+        total_kunjungan: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        },
+        rata_rata_kunjungan_perhari: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
+        }
+    },
+    {
+        tableName: 'rl_tiga_titik_lima_satusehat',
+        timestamps: true,
+        createdAt: 'created_at',
+        updatedAt: 'modified_at'
+    }
+)
