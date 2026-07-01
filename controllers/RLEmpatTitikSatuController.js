@@ -1180,3 +1180,52 @@ const notifySseClients = (rsId, periode) => {
   });
   clients.forEach((client) => client.write(`data: ${payload}\n\n`));
 };
+
+export const manualSyncRL41 = async (req, res) => {
+  const { rsId, periode } = req.body;
+
+  if (!rsId || !periode) {
+    return res
+      .status(400)
+      .send({ status: false, message: "rsId dan periode wajib diisi" });
+  }
+
+  // Validasi akses jika user RS (jenisUserId == 4)
+  if (req.user.jenisUserId == 4 && rsId != req.user.satKerId) {
+    return res
+      .status(403)
+      .send({ status: false, message: "Kode RS Tidak Sesuai" });
+  }
+
+  try {
+    const satuSehat = await satu_sehat_id.findOne({
+      where: { kode_baru_faskes: rsId },
+      attributes: ["organization_id"],
+    });
+
+    if (!satuSehat) {
+      return res
+        .status(404)
+        .send({ status: false, message: "OrganizationId Tidak Ada" });
+    }
+
+    const organization_id = satuSehat.organization_id?.substring(0, 9);
+
+    // Cegah dobel sync
+    const syncing = await isSyncing(organization_id, periode);
+    if (syncing) {
+      return res
+        .status(200)
+        .send({ status: true, message: "Sedang dalam proses sync" });
+    }
+
+    // Langsung sync tanpa cek isStale (ini manual, jadi force)
+    doSync(organization_id, periode)
+      .then(() => notifySseClients(organization_id, periode))
+      .catch((err) => console.error("[Manual Sync Error]", err.message));
+
+    return res.status(200).send({ status: true, message: "Sync dimulai" });
+  } catch (err) {
+    return res.status(500).send({ status: false, message: err.message });
+  }
+};
