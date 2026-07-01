@@ -33,6 +33,8 @@ import {
   deleteDataRLTigaTitikTiga,
   getDataRLTigaTitikTigaDetails,
   getDataRLTigaTitikTigaById,
+  getDataRLTigaTitikTigaSatuSehat,
+  getDataRLTigaTitikTigaSatusehatLocal,
 } from "../controllers/RLTigaTitikTigaController.js";
 
 // RL 3.4
@@ -63,6 +65,8 @@ import {
   insertDataRLTigaTitikEnam,
   updateDataRLTigaTitikEnam,
   deleteDataRLTigaTitikEnam,
+  getDataRLTigaTitikEnamSatuSehat,
+  getDataRLTigaTitikEnamSatusehatLocal,
 } from "../controllers/RLTigaTitikEnamController.js";
 
 // RL 3.7
@@ -72,6 +76,8 @@ import {
   insertDataRLTigaTitikTujuh,
   updateDataRLTigaTitikTujuh,
   deleteDataRLTigaTitikTujuh,
+  getDataRLTigaTitikTujuhSatuSehat,
+  getDataRLTigaTitikTujuhSatusehatLocal,
 } from "../controllers/RLTigaTitikTujuhController.js";
 
 //Jenis Spesialisasi 3.10
@@ -155,6 +161,7 @@ import {
   insertRLTigaTitikDua,
   deleteRLTigaTitikDua,
   updateRLTigaTitikDua,
+  getDataRLTigaTitikDuaSatuSehat,
 } from "../controllers/RLTigaTitikDuaController.js";
 
 // RL 3.2 Validasi
@@ -554,7 +561,11 @@ router.delete(
 );
 
 router.get("/apisirs6v2/rltigatitikdua/:id", verifyToken, showRLTigaTitikDua);
-
+router.get(
+    "/apisirs6v2/rltigatitikduasatusehat",
+    verifyToken,
+    getDataRLTigaTitikDuaSatuSehat
+);
 router.patch(
   "/apisirs6v2/rltigatitikdua/:id",
   verifyCsrfToken,
@@ -955,7 +966,16 @@ router.post(
 );
 
 router.get("/apisirs6v2/rltigatitiktiga", verifyToken, getDataRLTigaTitikTiga);
-
+router.get(
+  "/apisirs6v2/rltigatitiktigasatusehat",
+  verifyToken,
+  getDataRLTigaTitikTigaSatuSehat
+);
+router.get(
+  "/apisirs6v2/getDataRLTigaTitikTigaSatusehatLocal",
+  verifyToken,
+  getDataRLTigaTitikTigaSatusehatLocal
+);
 router.delete(
   "/apisirs6v2/rltigatitiktiga/:id",
   verifyCsrfToken,
@@ -1093,6 +1113,12 @@ router.get(
   getDataRLTigaTitikLimaSatuSehat
 );
 
+  router.get(
+    "/apisirs6v2/rltigatitiklimasatusehat",
+    verifyToken,
+    getDataRLTigaTitikLimaSatuSehat
+  );
+
 // Jenis Kegiatan
 router.get(
   "/apisirs6v2/jeniskegiatanrltigatitikenam",
@@ -1133,6 +1159,18 @@ router.patch(
   updateDataRLTigaTitikEnam,
 );
 
+router.get(
+  "/apisirs6v2/rltigatitikenamsatusehat",
+  verifyToken,
+  getDataRLTigaTitikEnamSatuSehat
+);
+
+router.get(
+  "/apisirs6v2/getDataRLTigaTitikEnamSatusehatLocal",
+  verifyToken,
+  getDataRLTigaTitikEnamSatusehatLocal
+);
+
 // Jenis Kegiatan
 router.get(
   "/apisirs6v2/jeniskegiatanrltigatitiktujuh",
@@ -1171,6 +1209,18 @@ router.patch(
   verifyToken,
   verifyHmac,
   updateDataRLTigaTitikTujuh,
+);
+
+router.get(
+  "/apisirs6v2/rltigatitiktujuhsatusehat",
+  verifyToken,
+  getDataRLTigaTitikTujuhSatuSehat
+);
+
+router.get(
+  "/apisirs6v2/getDataRLTigaTitikTujuhSatusehatLocal",
+  verifyToken,
+  getDataRLTigaTitikTujuhSatusehatLocal
 );
 
 //Jenis Pemeriksaan RL3.8

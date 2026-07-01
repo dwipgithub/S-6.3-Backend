@@ -1,7 +1,9 @@
 import { databaseSIRS } from '../config/Database.js'
-import { get, show, rlTigaTitikDuaHeader, rlTigaTitikDuaDetail } from '../models/RLTigaTitikDuaModel.js'
+import { get, show, rlTigaTitikDuaHeader, rlTigaTitikDuaDetail, RLTigaTitikDuaSatusehat } from '../models/RLTigaTitikDuaModel.js'
 import Joi from 'joi'
 import joiDate from "@joi/date"
+import axios from 'axios'
+import { satu_sehat_id } from '../models/UserModel.js'
 
 export const getRLTigaTitikDua = (req, res) => {
     const joi = Joi.extend(joiDate) 
@@ -373,6 +375,442 @@ export const deleteRLTigaTitikDua = async(req, res) => {
         res.status(404).send({
             status: false,
             message: error
+        })
+    }
+}
+
+export const getDataRLTigaTitikDuaSatuSehat = async (req, res) => {
+    try {
+
+        const toMonthDate = (value, fallbackPeriode) => {
+
+            const raw = (value ?? fallbackPeriode ?? '')
+                .toString()
+                .trim()
+
+            const match = raw.match(
+                /^(\d{4})-(\d{2})(?:-(\d{2}))?/
+            )
+
+            if (!match) return null
+
+            const month = Number(match[2])
+
+            if (
+                !Number.isFinite(month) ||
+                month < 1 ||
+                month > 12
+            ) {
+                return null
+            }
+
+            return `${match[1]}-${match[2]}`
+        }
+
+        const bulan_laporan_param = (
+            req.query.bulan_laporan ||
+            req.query.periode ||
+            req.query.month ||
+            ''
+        ).toString().trim()
+
+        if (!bulan_laporan_param) {
+            return res.status(400).json({
+                status: false,
+                message: "Parameter 'periode' wajib diisi."
+            })
+        }
+
+        const isValidPeriode =
+            /^\d{4}-\d{2}$/.test(bulan_laporan_param)
+
+        if (!isValidPeriode) {
+            return res.status(400).json({
+                status: false,
+                message: "Format periode harus YYYY-MM."
+            })
+        }
+
+        const baseUrl =
+            process.env.SATUSEHAT_BASE_URL ||
+            'https://api-dev.dto.kemkes.go.id/fhir-sirs'
+
+        // =========================================
+        // API KEY
+        // =========================================
+        const apiKeyFromHeader = (
+            req.headers['x-api-key'] || ''
+        ).toString().trim()
+
+        const apiKey =
+            apiKeyFromHeader ||
+            process.env.SATUSEHAT_API_KEY
+
+        if (!apiKey) {
+            return res.status(500).json({
+                status: false,
+                message: "API key tidak tersedia."
+            })
+        }
+
+        const koders = req.query.rsId
+
+        if (!koders) {
+            return res.status(401).json({
+                status: false,
+                message: "Session user tidak ditemukan."
+            })
+        }
+
+        const satuSehat =
+            await satu_sehat_id.findOne({
+                where: {
+                    kode_baru_faskes: koders
+                },
+                attributes: ['organization_id']
+            })
+
+        if (!satuSehat) {
+            return res.status(404).json({
+                status: false,
+                message: "OrganizationId Tidak Ada"
+            })
+        }
+
+        const organizationIdFinal =
+            satuSehat.organization_id
+
+        console.log(
+            "ORGANIZATION ID:",
+            organizationIdFinal
+        )
+
+        const cleanBaseUrl = baseUrl
+            .replace(/\/?v1\/rlreport\/?$/, '')
+            .replace(/\/$/, '')
+
+        const url =
+            `${cleanBaseUrl}/v1/rlreport/rl32` +
+            `?organization_id=${encodeURIComponent(organizationIdFinal)}` +
+            `&bulan_laporan=${encodeURIComponent(bulan_laporan_param)}`
+
+        const response = await axios.get(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': apiKey
+            }
+        })
+
+        const raw = response?.data
+
+        const candidates = [
+            raw?.data?.data?.daftar_jenis_pelayanan,
+            raw?.data?.records,
+            raw?.data?.data,
+            raw?.data?.items,
+            raw?.data,
+            raw?.records,
+            raw?.items,
+            raw
+        ]
+
+        let items = []
+
+        for (const candidate of candidates) {
+
+            if (Array.isArray(candidate)) {
+                items = candidate
+                break
+            }
+
+            if (
+                candidate &&
+                Array.isArray(candidate.records)
+            ) {
+                items = candidate.records
+                break
+            }
+
+            if (
+                candidate &&
+                typeof candidate === 'object' &&
+                (
+                    candidate.jenis_pelayanan ||
+                    candidate.daftar_jenis_pelayanan
+                )
+            ) {
+                items = Array.isArray(candidate.daftar_jenis_pelayanan)
+                    ? candidate.daftar_jenis_pelayanan
+                    : [candidate]
+
+                break
+            }
+        }
+
+        // =========================================
+        // JIKA DATA KOSONG
+        // =========================================
+        if (!items || items.length === 0) {
+
+            return res.status(200).json({
+                status: true,
+                message:
+                    'Data belum tersedia untuk periode ini.',
+                meta: {
+                    parsed_count: 0,
+                    inserted_count: 0,
+                    updated_count: 0,
+                    skipped_count: 0
+                },
+                data: {
+                    daftar_jenis_pelayanan: []
+                }
+            })
+        }
+
+        // =========================================
+        // SIMPAN / UPDATE DATABASE
+        // =========================================
+        let insertedCount = 0
+        let updatedCount = 0
+        let skippedCount = 0
+
+        for (const item of items) {
+
+            const bulan_laporan =
+                toMonthDate(
+                    item?.bulan_laporan || raw?.data?.bulan_laporan,
+                    bulan_laporan_param
+                )
+
+            const organization_id = (
+                item?.organization_id ??
+                raw?.data?.organization_id ??
+                organizationIdFinal
+            ).toString().trim()
+
+            const jenis_pelayanan = (
+                item?.jenis_pelayanan || ''
+            ).toString().trim()
+
+            const code = (
+                item?.code ??
+                item?.kode ??
+                item?.jenis_pelayanan_code ??
+                ''
+            ).toString().trim()
+
+            if (
+                !bulan_laporan ||
+                !organization_id ||
+                !jenis_pelayanan ||
+                !code
+            ) {
+                skippedCount += 1
+                continue
+            }
+
+            const payload = {
+
+                bulan_laporan,
+                organization_id,
+                jenis_pelayanan,
+                code,
+
+                pasien_awal_bulan:
+                    Number(
+                        item?.pasien_awal_bulan ?? 0
+                    ),
+
+                pasien_masuk:
+                    Number(
+                        item?.pasien_masuk ?? 0
+                    ),
+
+                pasien_pindahan:
+                    Number(
+                        item?.pasien_pindahan ?? 0
+                    ),
+
+                pasien_dipindahkan:
+                    Number(
+                        item?.pasien_dipindahkan ?? 0
+                    ),
+
+                pasien_keluar_hidup:
+                    Number(
+                        item?.pasien_keluar_hidup ?? 0
+                    ),
+
+                mati_lk_kurang_48_jam:
+                    Number(
+                        item?.pasien_keluar_mati
+                            ?.laki_laki
+                            ?.kurang_48_jam ?? 0
+                    ),
+
+                mati_lk_lebih_sama_48_jam:
+                    Number(
+                        item?.pasien_keluar_mati
+                            ?.laki_laki
+                            ?.lebih_sama_48_jam ?? 0
+                    ),
+
+                mati_pr_kurang_48_jam:
+                    Number(
+                        item?.pasien_keluar_mati
+                            ?.perempuan
+                            ?.kurang_48_jam ?? 0
+                    ),
+
+                mati_pr_lebih_sama_48_jam:
+                    Number(
+                        item?.pasien_keluar_mati
+                            ?.perempuan
+                            ?.lebih_sama_48_jam ?? 0
+                    ),
+
+                jumlah_lama_dirawat:
+                    Number(
+                        item?.jumlah_lama_dirawat ?? 0
+                    ),
+
+                pasien_akhir_bulan:
+                    Number(
+                        item?.pasien_akhir_bulan ?? 0
+                    ),
+
+                jumlah_hari_perawatan:
+                    Number(
+                        item?.jumlah_hari_perawatan ?? 0
+                    ),
+
+                hari_vvip:
+                    Number(
+                        item?.rincian_hari_perawatan_per_kelas?.VVIP ?? 0
+                    ),
+
+                hari_vip:
+                    Number(
+                        item?.rincian_hari_perawatan_per_kelas?.VIP ?? 0
+                    ),
+
+                hari_kelas_1:
+                    Number(
+                        item?.rincian_hari_perawatan_per_kelas?.I ?? 0
+                    ),
+
+                hari_kelas_2:
+                    Number(
+                        item?.rincian_hari_perawatan_per_kelas?.II ?? 0
+                    ),
+
+                hari_kelas_3:
+                    Number(
+                        item?.rincian_hari_perawatan_per_kelas?.III ?? 0
+                    ),
+
+                hari_kelas_khusus:
+                    Number(
+                        item?.rincian_hari_perawatan_per_kelas?.kelas_khusus ?? 0
+                    ),
+
+                alokasi_tempat_tidur_awal_bulan:
+                    Number(
+                        item?.alokasi_tempat_tidur_awal_bulan ?? 0
+                    )
+            }
+
+            const existing =
+                await RLTigaTitikDuaSatusehat.findOne({
+                    where: {
+                        bulan_laporan:
+                            payload.bulan_laporan,
+                        organization_id:
+                            payload.organization_id,
+                        jenis_pelayanan:
+                            payload.jenis_pelayanan,
+                        code:
+                            payload.code
+                    }
+                })
+
+            if (existing) {
+
+                await existing.update(payload)
+
+                updatedCount += 1
+
+            } else {
+
+                await RLTigaTitikDuaSatusehat.create(payload)
+
+                insertedCount += 1
+            }
+        }
+
+        const bulan_laporan_key =
+            toMonthDate(
+                raw?.data?.bulan_laporan,
+                bulan_laporan_param
+            ) || bulan_laporan_param
+
+        const savedRows =
+            await RLTigaTitikDuaSatusehat.findAll({
+                where: {
+                    bulan_laporan: bulan_laporan_key,
+                    organization_id: organizationIdFinal
+                },
+                order: [
+                    ['jenis_pelayanan', 'ASC']
+                ]
+            })
+
+        return res.status(200).json({
+            status: true,
+            meta: {
+                parsed_count: items.length,
+                inserted_count: insertedCount,
+                updated_count: updatedCount,
+                skipped_count: skippedCount
+            },
+            data: {
+                daftar_jenis_pelayanan:
+                    savedRows.map((row) => row.toJSON())
+            }
+        })
+
+    } catch (err) {
+
+        console.error(err)
+
+        const statusCode =
+            err?.response?.status || 500
+
+        if (statusCode === 404) {
+
+            return res.status(200).json({
+                status: true,
+                message:
+                    'Data belum tersedia untuk periode ini.',
+                meta: {
+                    parsed_count: 0,
+                    inserted_count: 0,
+                    updated_count: 0,
+                    skipped_count: 0
+                },
+                data: {
+                    daftar_jenis_pelayanan: []
+                }
+            })
+        }
+
+        return res.status(statusCode).json({
+            status: false,
+            message:
+                'Gagal memproses data RL 3.2 Satusehat',
+            detail:
+                err?.response?.data || err.message
         })
     }
 }

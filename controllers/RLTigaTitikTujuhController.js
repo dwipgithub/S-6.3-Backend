@@ -1,11 +1,13 @@
-import { databaseSIRS } from '../config/Database.js'
-import { rlTigaTitikTujuh, rlTigaTitikTujuhDetail } from '../models/RLTigaTitikTujuhModel.js'
-import Joi from 'joi'
+import { databaseSIRS } from "../config/Database.js"
+import { rlTigaTitikTujuh, rlTigaTitikTujuhDetail, RLTigaTitikTujuhSatusehat } from "../models/RLTigaTitikTujuhModel.js"
+import Joi from "joi"
 import {
-    groupJenisKegiatan,
-    groupJenisKegiatanHeader,
-    jenisKegiatan,
-  } from "../models/JenisKegiatanRLTigaTitikTujuhModel.js";
+  groupJenisKegiatan,
+  groupJenisKegiatanHeader,
+  jenisKegiatan,
+} from "../models/JenisKegiatanRLTigaTitikTujuhModel.js";
+import axios from "axios";
+import { satu_sehat_id } from "../models/UserModel.js";
 
 export const getDataRLTigaTitikTujuh2 = (req, res) => {
     rlTigaTitikTujuh.findAll({
@@ -271,4 +273,300 @@ export const getRLTigaTitikTujuhById = async(req,res)=>{
         })
         return
     })
+}
+
+export const getDataRLTigaTitikTujuhSatuSehat = async (req, res) => {
+    try {
+        const toMonthDate = (value, fallbackPeriode) => {
+            const raw = (value ?? fallbackPeriode ?? '')
+                .toString()
+                .trim()
+
+            const match = raw.match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/)
+
+            if (!match) return null
+
+            const month = Number(match[2])
+
+            if (!Number.isFinite(month) || month < 1 || month > 12) {
+                return null
+            }
+
+            return `${match[1]}-${match[2]}-01`
+        }
+
+        const periode = (
+            req.query.periode ||
+            req.query.month ||
+            ''
+        ).toString().trim()
+
+        if (!periode) {
+            return res.status(400).json({
+                status: false,
+                message: "Parameter 'periode' wajib diisi."
+            })
+        }
+
+        const isValidPeriode = /^\d{4}-\d{2}$/.test(periode)
+
+        if (!isValidPeriode) {
+            return res.status(400).json({
+                status: false,
+                message: "Format periode harus YYYY-MM."
+            })
+        }
+
+
+        const baseUrl =
+            process.env.SATUSEHAT_BASE_URL ||
+            'https://api-dev.dto.kemkes.go.id/fhir-sirs'
+
+        // =========================================
+        // API KEY
+        // =========================================
+        const apiKeyFromHeader = (
+            req.headers['x-api-key'] || ''
+        ).toString().trim()
+
+        const apiKey =
+            apiKeyFromHeader ||
+            process.env.SATUSEHAT_API_KEY
+
+        if (!apiKey) {
+            return res.status(500).json({
+                status: false,
+                message: "API key tidak tersedia."
+            })
+        }
+        const koders = req.query.rsId;
+
+
+        if (!koders) {
+            return res.status(401).json({
+                status: false,
+                message: "Session user tidak ditemukan."
+            })
+        }
+        const satuSehat = await satu_sehat_id.findOne({
+            where: {
+                kode_baru_faskes: koders
+            },
+            attributes: ["organization_id"]
+        })
+
+
+        if (!satuSehat) {
+            return res.status(404).json({
+                status: false,
+                message: "OrganizationId Tidak Ada"
+            })
+        }
+
+        const organization_id =
+            satuSehat.organization_id
+
+        console.log(
+            "ORGANIZATION ID:",
+            organization_id
+        )
+        const cleanBaseUrl = baseUrl
+            .replace(/\/?v1\/rlreport\/?$/, '')
+            .replace(/\/$/, '')
+
+        const url =
+            `${cleanBaseUrl}/v1/rlreport/rl37` +
+            `?bulan_laporan=${encodeURIComponent(periode)}` +
+            `&organization_id=${encodeURIComponent(organization_id)}`
+
+        const response = await axios.get(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': apiKey
+            }
+        })
+
+        const raw = response?.data
+        const candidates = [
+            raw?.data?.pelayanan_neonatal_bayi_balita,
+            raw?.data?.data?.pelayanan_neonatal_bayi_balita,
+            raw?.pelayanan_neonatal_bayi_balita,
+            raw?.data,
+            raw
+        ]
+
+        let items = []
+
+        for (const candidate of candidates) {
+            if (Array.isArray(candidate)) {
+                items = candidate
+                break
+            }
+        }
+
+        // =========================================
+        // JIKA DATA KOSONG
+        // =========================================
+        if (!items || items.length === 0) {
+            return res.status(200).json({
+                status: true,
+                message: 'Data belum tersedia untuk periode ini.',
+                meta: {
+                    parsed_count: 0,
+                    inserted_count: 0,
+                    updated_count: 0,
+                    skipped_count: 0
+                },
+                data: raw
+            })
+        }
+
+        // =========================================
+        // SIMPAN / UPDATE DATABASE
+        // =========================================
+        let insertedCount = 0
+        let updatedCount = 0
+        let skippedCount = 0
+
+        for (const item of items) {
+            const bulan_laporan = toMonthDate(
+                item?.bulan_laporan || item?.month,
+                periode
+            )
+
+            const organization_id_final = (
+                item?.organization_id ??
+                organization_id
+            ).toString().trim()
+
+            const nama_kegiatan = (
+                item?.nama_kegiatan || ''
+            ).toString().trim()
+
+            if (
+                !bulan_laporan ||
+                !organization_id_final ||
+                !nama_kegiatan
+            ) {
+                skippedCount += 1
+                continue
+            }
+
+            const payload = {
+                bulan_laporan,
+                organization_id: organization_id_final,
+                tahun: raw?.data?.tahun || Number(periode.split('-')[0]),
+                nama_kegiatan,
+                rujukan_medis_rumah_sakit: Number(item?.rujukan_medis_rumah_sakit ?? 0),
+                rujukan_medis_bidan: Number(item?.rujukan_medis_bidan ?? 0),
+                rujukan_medis_puskesmas: Number(item?.rujukan_medis_puskesmas ?? 0),
+                rujukan_medis_faskes_lainnya: Number(item?.rujukan_medis_faskes_lainnya ?? 0),
+                rujukan_medis_jumlah_hidup: Number(item?.rujukan_medis_jumlah_hidup ?? 0),
+                rujukan_medis_jumlah_mati: Number(item?.rujukan_medis_jumlah_mati ?? 0),
+                rujukan_medis_total: Number(item?.rujukan_medis_total ?? 0),
+                rujukan_non_medis_jumlah_hidup: Number(item?.rujukan_non_medis_jumlah_hidup ?? 0),
+                rujukan_non_medis_jumlah_mati: Number(item?.rujukan_non_medis_jumlah_mati ?? 0),
+                rujukan_non_medis_total: Number(item?.rujukan_non_medis_total ?? 0),
+                non_rujukan_jumlah_hidup: Number(item?.non_rujukan_jumlah_hidup ?? 0),
+                non_rujukan_jumlah_mati: Number(item?.non_rujukan_jumlah_mati ?? 0),
+                non_rujukan_total: Number(item?.non_rujukan_total ?? 0),
+                dirujuk: Number(item?.dirujuk ?? 0)
+            }
+
+            const existing =
+                await RLTigaTitikTujuhSatusehat.findOne({
+                    where: {
+                        bulan_laporan: payload.bulan_laporan,
+                        organization_id: payload.organization_id,
+                        nama_kegiatan: payload.nama_kegiatan
+                    }
+                })
+
+            if (existing) {
+                await existing.update(payload)
+                updatedCount += 1
+            } else {
+                await RLTigaTitikTujuhSatusehat.create(payload)
+                insertedCount += 1
+            }
+        }
+
+        // =========================================
+        // RESPONSE SUCCESS
+        // =========================================
+        return res.status(200).json({
+            status: true,
+            message: 'success',
+            meta: {
+                parsed_count: items.length,
+                inserted_count: insertedCount,
+                updated_count: updatedCount,
+                skipped_count: skippedCount
+            },
+            data: raw
+        })
+
+    } catch (err) {
+        console.error(err)
+        const statusCode = err?.response?.status || 500
+
+        if (statusCode === 404) {
+            return res.status(200).json({
+                status: true,
+                message: 'Data belum tersedia untuk periode ini.',
+                meta: {
+                    parsed_count: 0,
+                    inserted_count: 0,
+                    updated_count: 0,
+                    skipped_count: 0
+                },
+                data: err?.response?.data || null
+            })
+        }
+
+        return res.status(statusCode).json({
+            status: false,
+            message: 'Gagal memproses data RL 3.7 Satusehat',
+            detail: err?.response?.data || err.message
+        })
+    }
+}
+
+export const getDataRLTigaTitikTujuhSatusehatLocal = async (req, res) => {
+    try {
+        console.log("Request params:", req.query);
+        const where = {}
+        if (req.query.bulan_laporan) where.bulan_laporan = req.query.bulan_laporan
+        
+        // If rsId is provided, get organization_id from satu_sehat_id table
+        if (req.query.rsId) {
+            console.log("Looking for organization_id with kode_baru_faskes:", req.query.rsId);
+            const satuSehat = await satu_sehat_id.findOne({
+                where: { kode_baru_faskes: req.query.rsId },
+                attributes: ["organization_id"]
+            });
+            console.log("satuSehat result:", satuSehat);
+            if (satuSehat) {
+                where.organization_id = satuSehat.organization_id;
+            }
+        } else if (req.query.organization_id) {
+            where.organization_id = req.query.organization_id
+        }
+        
+        console.log("Query where clause:", where);
+        const data = await RLTigaTitikTujuhSatusehat.findAll({ where })
+        console.log("Query result:", data);
+        res.status(200).json({
+            status: true,
+            message: 'data found',
+            data: data
+        })
+    } catch (err) {
+        console.error("Error in getDataRLTigaTitikTujuhSatusehatLocal:", err);
+        res.status(500).json({
+            status: false,
+            message: 'Gagal mengambil data RL 3.7 Satusehat lokal',
+            detail: err.message
+        })
+    }
 }

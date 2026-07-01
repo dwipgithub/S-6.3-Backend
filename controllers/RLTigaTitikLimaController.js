@@ -177,10 +177,6 @@ export const getRLTigaTitikLimaById = async(req,res)=>{
 
 export const getDataRLTigaTitikLimaSatuSehat = async (req, res) => {
     try {
-
-        // =========================================
-        // FORMAT BULAN
-        // =========================================
         const toMonthDate = (value, fallbackPeriode) => {
             const raw = (value ?? fallbackPeriode ?? '')
                 .toString()
@@ -199,9 +195,6 @@ export const getDataRLTigaTitikLimaSatuSehat = async (req, res) => {
             return `${match[1]}-${match[2]}-01`
         }
 
-        // =========================================
-        // VALIDASI PERIODE
-        // =========================================
         const periode = (
             req.query.periode ||
             req.query.month ||
@@ -224,9 +217,7 @@ export const getDataRLTigaTitikLimaSatuSehat = async (req, res) => {
             })
         }
 
-        // =========================================
-        // BASE URL DARI ENV
-        // =========================================
+
         const baseUrl =
             process.env.SATUSEHAT_BASE_URL ||
             'https://api-dev.dto.kemkes.go.id/fhir-sirs'

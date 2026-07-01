@@ -1,0 +1,26 @@
+-- Membuat tabel rl_tiga_titik_tujuh_satusehat untuk menyimpan data RL 3.7 dari Satu Sehat
+CREATE TABLE IF NOT EXISTS `rl_tiga_titik_tujuh_satusehat` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `bulan_laporan` date NOT NULL,
+  `organization_id` varchar(50) NOT NULL,
+  `tahun` int DEFAULT NULL,
+  `nama_kegiatan` varchar(255) NOT NULL,
+  `rujukan_medis_rumah_sakit` int NOT NULL DEFAULT '0',
+  `rujukan_medis_bidan` int NOT NULL DEFAULT '0',
+  `rujukan_medis_puskesmas` int NOT NULL DEFAULT '0',
+  `rujukan_medis_faskes_lainnya` int NOT NULL DEFAULT '0',
+  `rujukan_medis_jumlah_hidup` int NOT NULL DEFAULT '0',
+  `rujukan_medis_jumlah_mati` int NOT NULL DEFAULT '0',
+  `rujukan_medis_total` int NOT NULL DEFAULT '0',
+  `rujukan_non_medis_jumlah_hidup` int NOT NULL DEFAULT '0',
+  `rujukan_non_medis_jumlah_mati` int NOT NULL DEFAULT '0',
+  `rujukan_non_medis_total` int NOT NULL DEFAULT '0',
+  `non_rujukan_jumlah_hidup` int NOT NULL DEFAULT '0',
+  `non_rujukan_jumlah_mati` int NOT NULL DEFAULT '0',
+  `non_rujukan_total` int NOT NULL DEFAULT '0',
+  `dirujuk` int NOT NULL DEFAULT '0',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `modified_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_rl37` (`bulan_laporan`,`organization_id`,`nama_kegiatan`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

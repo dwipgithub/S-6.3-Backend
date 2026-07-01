@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS `rl_tiga_titik_enam_satusehat` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `bulan_laporan` date NOT NULL,
+  `organization_id` varchar(50) NOT NULL,
+  `jenis_kegiatan` varchar(255) NOT NULL,
+  `nama_kegiatan` varchar(255) NOT NULL,
+  `rujukan_rs` int NOT NULL DEFAULT 0,
+  `rujukan_bidan` int NOT NULL DEFAULT 0,
+  `rujukan_puskesmas` int NOT NULL DEFAULT 0,
+  `rujukan_faskes_lain` int NOT NULL DEFAULT 0,
+  `non_medis` int NOT NULL DEFAULT 0,
+  `non_rujukan` int NOT NULL DEFAULT 0,
+  `dirujuk` int NOT NULL DEFAULT 0,
+  `hidup` int NOT NULL DEFAULT 0,
+  `mati` int NOT NULL DEFAULT 0,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `modified_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_rl36` (`bulan_laporan`, `organization_id`, `jenis_kegiatan`, `nama_kegiatan`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

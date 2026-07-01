@@ -78,6 +78,103 @@ export const rlTigaTitikTigaDetail = databaseSIRS.define(
   }
 );
 
+export const RLTigaTitikTigaSatusehat = databaseSIRS.define(
+  "rl_tiga_titik_tiga_satusehat",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    month_year: {
+      type: DataTypes.STRING(7),
+      allowNull: false,
+      unique: "uq_rl33"
+    },
+    ihs_organization: {
+      type: DataTypes.STRING(50),
+      allowNull: false,
+      unique: "uq_rl33"
+    },
+    kategori: {
+      type: DataTypes.STRING(100),
+      allowNull: false,
+      unique: "uq_rl33"
+    },
+    jenis_pelayanan: {
+      type: DataTypes.STRING(150),
+      allowNull: false,
+      unique: "uq_rl33"
+    },
+    total_pasien_rujukan: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    total_pasien_non_rujukan: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    tindak_lanjut_dirawat: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    tindak_lanjut_dirujuk: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    tindak_lanjut_pulang: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    mati_di_igd_laki_laki: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    mati_di_igd_perempuan: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    doa_laki_laki: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    doa_perempuan: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    luka_luka_laki_laki: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    luka_luka_perempuan: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    },
+    false_emergency: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0
+    }
+  },
+  {
+    tableName: "rl_tiga_titik_tiga_satusehat",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "modified_at",
+  }
+);
+
 rlTigaTitikTiga.hasMany(rlTigaTitikTigaDetail, {
   foreignKey: "rl_tiga_titik_tiga_id",
 });
