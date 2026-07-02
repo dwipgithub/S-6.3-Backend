@@ -478,7 +478,7 @@ export const getDataRLTigaTitikDuaSatuSehat = async (req, res) => {
         }
 
         const organizationIdFinal =
-            satuSehat.organization_id
+            satuSehat.organization_id?.substring(0, 9);
 
         console.log(
             "ORGANIZATION ID:",

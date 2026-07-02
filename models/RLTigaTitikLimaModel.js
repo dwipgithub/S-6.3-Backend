@@ -7,7 +7,7 @@ export const rlTigaTitikLimaHeader = databaseSIRS.define('rl_tiga_titik_lima',
             type: DataTypes.STRING
         },
         tahun: {
-            type: DataTypes.DATE
+            type: DataTypes.DATEONLY
         },
         user_id: {
             type: DataTypes.INTEGER
@@ -20,7 +20,7 @@ export const rlTigaTitikLimaDetail = databaseSIRS.define('rl_tiga_titik_lima_det
         type: DataTypes.STRING
     },
     tahun: {
-        type: DataTypes.DATE
+        type: DataTypes.DATEONLY
     },
     rl_tiga_titik_lima_id: {
         type: DataTypes.INTEGER

@@ -819,7 +819,7 @@ export const getDataRLTigaTitikTigaSatuSehat = async (req, res) => {
       });
     }
 
-    const organizationIdFinal = satuSehat.organization_id;
+    const organizationIdFinal = satuSehat.organization_id?.substring(0, 9);
 
     const cleanBaseUrl = baseUrl
       .replace(/\/?v1\/rlreport\/?$/, "")
@@ -962,7 +962,7 @@ export const getDataRLTigaTitikTigaSatusehatLocal = async (req, res) => {
       });
 
       if (satuSehat) {
-        where.ihs_organization = satuSehat.organization_id;
+        where.ihs_organization = satuSehat.organization_id?.substring(0, 9);
       }
     } else if (req.query.ihs_organization) {
       where.ihs_organization = req.query.ihs_organization;

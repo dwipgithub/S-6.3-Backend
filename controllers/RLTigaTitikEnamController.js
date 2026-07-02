@@ -280,7 +280,7 @@ export const getDataRLTigaTitikEnamSatuSehat = async (req, res) => {
             })
         }
 
-        const organization_id = satuSehat.organization_id
+        const organization_id = satuSehat.organization_id?.substring(0, 9);
         const baseUrl =
             process.env.SATUSEHAT_BASE_URL ||
             'https://api-dev.dto.kemkes.go.id/fhir-sirs'
@@ -430,7 +430,7 @@ export const getDataRLTigaTitikEnamSatusehatLocal = async (req, res) => {
             })
 
             if (satuSehat) {
-                where.organization_id = satuSehat.organization_id
+                where.organization_id = satuSehat.organization_id?.substring(0, 9);
             }
         } else if (req.query.organization_id) {
             where.organization_id = req.query.organization_id
