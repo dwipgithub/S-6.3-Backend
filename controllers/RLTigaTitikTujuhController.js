@@ -364,7 +364,7 @@ export const getDataRLTigaTitikTujuhSatuSehat = async (req, res) => {
         }
 
         const organization_id =
-            satuSehat.organization_id
+            satuSehat.organization_id?.substring(0, 9);
 
         console.log(
             "ORGANIZATION ID:",
@@ -547,7 +547,7 @@ export const getDataRLTigaTitikTujuhSatusehatLocal = async (req, res) => {
             });
             console.log("satuSehat result:", satuSehat);
             if (satuSehat) {
-                where.organization_id = satuSehat.organization_id;
+                where.organization_id = satuSehat.organization_id?.substring(0, 9);
             }
         } else if (req.query.organization_id) {
             where.organization_id = req.query.organization_id

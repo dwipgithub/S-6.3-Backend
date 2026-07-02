@@ -67,7 +67,7 @@ export const getDataRLTigaTitikEmpatSatuSehat = async (req, res) => {
         message: "OrganizationId Tidak Ada",
       });
     }
-    const organization_id = satuSehat.organization_id;
+    const organization_id = satuSehat.organization_id?.substring(0, 9);
 
     const baseUrl =
       (req.query.baseUrl && req.query.baseUrl.trim()) ||
