@@ -292,7 +292,7 @@ export const login = async (req, res) => {
     const user = await users_sso.findOne({
       where: {
         email: req.body.userName,
-        jenis_user_id: 4,
+        // jenis_user_id: 4,
         is_active: 1,
       },
     });
@@ -387,6 +387,7 @@ export const login = async (req, res) => {
     });
   }
 };
+
 export const loginSSO = async (req, res) => {
   const token = req.query.token;
   const t = await databaseSIRS.transaction();

@@ -4,7 +4,7 @@ import { rlEmpatTitikSatuSatuSehat } from "../models/RLEmpatTitikSatuSatuSehatMo
 import { fetchRL41FromSatuSehat } from "./satusehat.service.js";
 import { Op } from "sequelize"; // ← tambahkan ini
 
-const STALE_MINUTES = parseInt(process.env.SYNC_STALE_MINUTES) || 30;
+const STALE_MINUTES = parseInt(process.env.SYNC_STALE_MINUTES) || 1440;
 const TIPE_RL = "rl_4_1";
 
 export const isStale = async (orgId, periode) => {
