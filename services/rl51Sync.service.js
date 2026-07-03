@@ -2,6 +2,7 @@ import { syncLog } from "../models/SyncLogModel.js";
 import { rlLimaTitikSatuSatuSehat } from "../models/RLLimaTitikSatuModel.js";
 import { AgeGroups } from "../models/AgeGroups.js";
 import { Op } from "sequelize";
+import { fetchRL51FromSatuSehat } from "./satusehat.service.js";
 import axios from "axios";
 
 const STALE_MINUTES = parseInt(process.env.SYNC_STALE_MINUTES) || 1440; // default 1 hari
@@ -117,9 +118,9 @@ export const doSyncRL51 = async (organization_id, periode) => {
       synced_at: new Date(),
     });
 
-    console.log(
-      `[RL51 Sync] ✅ org=${organization_id} periode=${periode} total=${totalSaved}`,
-    );
+    // console.log(
+    //   `[RL51 Sync] ✅ org=${organization_id} periode=${periode} total=${totalSaved}`,
+    // );
     return { success: true, total: totalSaved };
   } catch (err) {
     const errStatus = err.response?.status || err.status;
@@ -149,13 +150,13 @@ export const doSyncRL51 = async (organization_id, periode) => {
 // FETCH DARI SATUSEHAT
 // ─────────────────────────────────────────────
 
-const fetchRL51FromSatuSehat = async (organization_id, periode) => {
-  const response = await axios.get(
-    `${process.env.SATUSEHAT_BASE_URL}/rl51?month=${periode}&organization_id=${organization_id}`,
-    { headers: { "X-API-Key": process.env.SATUSEHAT_API_KEY } },
-  );
-  return response.data; // { status, message, data: { records: [...] } }
-};
+// const fetchRL51FromSatuSehat = async (organization_id, periode) => {
+//   const response = await axios.get(
+//     `${process.env.SATUSEHAT_BASE_URL}/rl51?month=${periode}&organization_id=${organization_id}`,
+//     { headers: { "X-API-Key": process.env.SATUSEHAT_API_KEY } },
+//   );
+//   return response.data; // { status, message, data: { records: [...] } }
+// };
 
 // ─────────────────────────────────────────────
 // SAVE RECORDS KE DB
