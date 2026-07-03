@@ -13,6 +13,14 @@ import dotenv from "dotenv";
 import { AgeGroups } from "../models/AgeGroups.js";
 import { Op } from "sequelize";
 import { icd } from "../models/ICDModel.js";
+
+import {
+  doSyncRL51,
+  getLastSyncInfoRL51,
+  isSyncingRL51,
+  isStaleRL51,
+} from "../services/rl51Sync.service.js";
+
 dotenv.config();
 
 export const getDataRLLimaTitikSatu = (req, res) => {
@@ -1381,3 +1389,271 @@ function groupByICDandAge(results) {
     return group;
   });
 }
+
+// ─────────────────────────────────────────────
+// SSE Clients Map
+// ─────────────────────────────────────────────
+
+const sseClients = new Map();
+
+const notifySseClients = (organization_id, periode) => {
+  const key = `${organization_id}_${periode}`;
+  const clients = sseClients.get(key);
+  if (!clients?.size) return;
+
+  const payload = JSON.stringify({
+    event: "sync_done",
+    organization_id,
+    periode,
+    at: new Date(),
+  });
+  clients.forEach((client) => client.write(`data: ${payload}\n\n`));
+};
+
+// ─────────────────────────────────────────────
+// 1. GET Data + Sync Status (dengan pagination)
+// ─────────────────────────────────────────────
+
+export const getDataRL51WithSyncStatus = async (req, res) => {
+  const joi = Joi.extend(joiDate);
+  const schema = joi.object({
+    rsId: joi.string().required(),
+    periode: joi
+      .string()
+      .pattern(/^\d{4}-\d{2}$/)
+      .required(),
+    page: joi.number().integer().min(1).default(1),
+    limit: joi.number().integer().min(1).max(20).default(20),
+  });
+
+  const { error, value } = schema.validate(req.query);
+  if (error) {
+    return res
+      .status(400)
+      .send({ status: false, message: error.details[0].message });
+  }
+
+  // Validasi akses
+  let koders;
+  if (req.user.jenisUserId == 4) {
+    if (req.query.rsId != req.user.satKerId) {
+      return res
+        .status(403)
+        .send({ status: false, message: "Kode RS Tidak Sesuai" });
+    }
+    koders = req.user.satKerId;
+  } else {
+    koders = req.query.rsId;
+  }
+
+  const periodeget = req.query.periode;
+  const { page, limit } = value;
+  const offset = (page - 1) * limit;
+
+  try {
+    const satuSehat = await satu_sehat_id.findOne({
+      where: { kode_baru_faskes: koders },
+      attributes: ["organization_id"],
+    });
+
+    if (!satuSehat) {
+      return res
+        .status(404)
+        .send({ status: false, message: "OrganizationId Tidak Ada" });
+    }
+
+    const organization_id = satuSehat.organization_id?.substring(0, 9);
+
+    // ── Semua query paralel ──
+    const [icdList, totalIcd, syncInfo, currentlySyncing] = await Promise.all([
+      rlLimaTitikSatuSatuSehat.findAll({
+        where: { organization_id, periode: periodeget },
+        attributes: ["icd_10"],
+        group: ["icd_10"],
+        order: [["icd_10", "ASC"]],
+        limit,
+        offset,
+        raw: true,
+      }),
+      rlLimaTitikSatuSatuSehat.count({
+        where: { organization_id, periode: periodeget },
+        distinct: true,
+        col: "icd_10",
+      }),
+      getLastSyncInfoRL51(organization_id, periodeget),
+      isSyncingRL51(organization_id, periodeget),
+    ]);
+
+    const icdCodes = icdList.map((i) => i.icd_10);
+    let data = [];
+    let satuSehatData = null;
+
+    if (icdCodes.length > 0) {
+      const resultRaw = await rlLimaTitikSatuSatuSehat.findAll({
+        where: {
+          organization_id,
+          periode: periodeget,
+          icd_10: icdCodes,
+        },
+        attributes: [
+          "icd_10",
+          "diagnosis",
+          "periode",
+          "male_new_cases",
+          "females_new_cases",
+          "total_new_cases",
+          "male_visits",
+          "female_visits",
+          "total_visits",
+          "age_id",
+        ],
+        include: [
+          {
+            model: AgeGroups,
+            attributes: ["name"],
+            required: false,
+          },
+          {
+            model: satu_sehat_id,
+            attributes: ["organization_id", "kode_baru_faskes"],
+            required: false,
+            include: [
+              {
+                model: users_sso,
+                attributes: ["nama", "rs_id"],
+                required: false,
+              },
+            ],
+          },
+        ],
+        order: [
+          ["icd_10", "ASC"],
+          ["age_id", "ASC"],
+        ],
+        subQuery: false,
+      });
+
+      satuSehatData = resultRaw[0]?.satu_sehat_id ?? null;
+      data = resultRaw.map((item) => {
+        const plain = item.get({ plain: true });
+        delete plain.satu_sehat_id;
+        return plain;
+      });
+    }
+
+    // ── Kirim response ke FE dulu ──
+    res.status(200).send({
+      status: true,
+      message: data.length ? "data found" : "data not found",
+      satu_sehat_id: satuSehatData,
+      data,
+      pagination: {
+        total: totalIcd,
+        page,
+        limit,
+        pages: Math.ceil(totalIcd / limit),
+      },
+      sync: {
+        lastSync: syncInfo?.synced_at ?? null,
+        status: syncInfo?.status ?? "never",
+        totalData: syncInfo?.total_data ?? 0,
+        isUpdating: currentlySyncing,
+      },
+    });
+
+    // ── Cek stale & background sync ──
+    const stale = await isStaleRL51(organization_id, periodeget);
+    if (stale && !currentlySyncing) {
+      console.log(
+        `[RL51 BG Sync] Stale → mulai sync org=${organization_id} periode=${periodeget}`,
+      );
+      doSyncRL51(organization_id, periodeget)
+        .then(() => notifySseClients(organization_id, periodeget))
+        .catch((err) =>
+          console.error(
+            `[RL51 BG Sync Error] org=${organization_id}:`,
+            err.message,
+          ),
+        );
+    }
+  } catch (err) {
+    res.status(500).send({ status: false, message: err.message });
+  }
+};
+
+// ─────────────────────────────────────────────
+// 2. SSE Subscribe
+// ─────────────────────────────────────────────
+
+export const subscribeSyncStatusRL51 = (req, res) => {
+  const { rsId, periode } = req.query;
+  const key = `${rsId}_${periode}`;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+
+  if (!sseClients.has(key)) sseClients.set(key, new Set());
+  sseClients.get(key).add(res);
+
+  // Ping tiap 30 detik supaya koneksi tidak putus
+  const ping = setInterval(() => res.write(": ping\n\n"), 30000);
+
+  req.on("close", () => {
+    clearInterval(ping);
+    sseClients.get(key)?.delete(res);
+  });
+};
+
+// ─────────────────────────────────────────────
+// 3. Manual Sync
+// ─────────────────────────────────────────────
+
+export const manualSyncRL51 = async (req, res) => {
+  const { rsId, periode } = req.body;
+
+  if (!rsId || !periode) {
+    return res
+      .status(400)
+      .send({ status: false, message: "rsId dan periode wajib diisi" });
+  }
+
+  if (req.user.jenisUserId == 4 && rsId != req.user.satKerId) {
+    return res
+      .status(403)
+      .send({ status: false, message: "Kode RS Tidak Sesuai" });
+  }
+
+  try {
+    const satuSehat = await satu_sehat_id.findOne({
+      where: { kode_baru_faskes: rsId },
+      attributes: ["organization_id"],
+    });
+
+    if (!satuSehat) {
+      return res
+        .status(404)
+        .send({ status: false, message: "OrganizationId Tidak Ada" });
+    }
+
+    const organization_id = satuSehat.organization_id;
+
+    // Cegah dobel sync
+    const syncing = await isSyncingRL51(organization_id, periode);
+    if (syncing) {
+      return res
+        .status(200)
+        .send({ status: true, message: "Sedang dalam proses sync" });
+    }
+
+    // Force sync tanpa cek stale (manual = selalu sync)
+    doSyncRL51(organization_id, periode)
+      .then(() => notifySseClients(organization_id, periode))
+      .catch((err) => console.error("[RL51 Manual Sync Error]", err.message));
+
+    return res.status(200).send({ status: true, message: "Sync dimulai" });
+  } catch (err) {
+    return res.status(500).send({ status: false, message: err.message });
+  }
+};
