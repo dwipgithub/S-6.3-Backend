@@ -7,9 +7,9 @@ import { Op } from "sequelize"; // ← tambahkan ini
 const STALE_MINUTES = parseInt(process.env.SYNC_STALE_MINUTES) || 1440;
 const TIPE_RL = "rl_4_1";
 
-export const isStale = async (orgId, periode) => {
+export const isStale = async (orgId, periode, tipe_rl = "rl_4_1") => {
   const log = await syncLog.findOne({
-    where: { orgId: orgId, tipe_rl: TIPE_RL, periode, status: "success" },
+    where: { orgId: orgId, tipe_rl, periode, status: "success" },
     order: [["synced_at", "DESC"]],
   });
   if (!log) return true;
@@ -18,11 +18,11 @@ export const isStale = async (orgId, periode) => {
   );
 };
 
-export const isSyncing = async (orgId, periode) => {
+export const isSyncing = async (orgId, periode, tipe_rl = "rl_4_1") => {
   const log = await syncLog.findOne({
     where: {
       orgId: orgId,
-      tipe_rl: TIPE_RL,
+      tipe_rl,
       periode,
       status: "syncing",
       createdAt: { [Op.gte]: new Date(Date.now() - 5 * 60000) },
@@ -31,9 +31,9 @@ export const isSyncing = async (orgId, periode) => {
   return !!log;
 };
 
-export const getLastSyncInfo = async (orgId, periode) => {
+export const getLastSyncInfo = async (orgId, periode, tipe_rl = "rl_4_1") => {
   return await syncLog.findOne({
-    where: { orgId: orgId, tipe_rl: TIPE_RL, periode },
+    where: { orgId: orgId, tipe_rl, periode },
     order: [["synced_at", "DESC"]],
     attributes: ["status", "synced_at", "total_data", "error_msg"],
   });
