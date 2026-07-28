@@ -1135,11 +1135,12 @@ export const getDataRLEmpatTitikSatuWithSatuSehat = async (req, res) => {
     const stale = await isStale(organization_id, periodeShort);
 
     if (stale && !currentlySyncing) {
-      doSync(organization_id, periodeShort)
-        .then(() => notifySseClients(organization_id, periodeShort))
-        .catch((err) =>
-          console.error(`[Sync BG Error] RS ${rsIdFinal}:`, err.message),
-        );
+      // OTOMATIS SYNC
+      // doSync(organization_id, periodeShort)
+      //   .then(() => notifySseClients(organization_id, periodeShort))
+      //   .catch((err) =>
+      //     console.error(`[Sync BG Error] RS ${rsIdFinal}:`, err.message),
+      //   );
     }
   } catch (err) {
     res.status(500).send({ status: false, message: err.message });

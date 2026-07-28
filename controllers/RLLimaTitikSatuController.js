@@ -1480,6 +1480,7 @@ export const getDataRL51WithSyncStatus = async (req, res) => {
         distinct: true,
         col: "icd_10",
       }),
+
       getLastSyncInfoRL51(organization_id, periodeget),
       isSyncingRL51(organization_id, periodeget),
     ]);
@@ -1564,17 +1565,15 @@ export const getDataRL51WithSyncStatus = async (req, res) => {
     // ── Cek stale & background sync ──
     const stale = await isStaleRL51(organization_id, periodeget);
     if (stale && !currentlySyncing) {
-      console.log(
-        `[RL51 BG Sync] Stale → mulai sync org=${organization_id} periode=${periodeget}`,
-      );
-      doSyncRL51(organization_id, periodeget)
-        .then(() => notifySseClients(organization_id, periodeget))
-        .catch((err) =>
-          console.error(
-            `[RL51 BG Sync Error] org=${organization_id}:`,
-            err.message,
-          ),
-        );
+      // SYNC OTOMATIS
+      // doSyncRL51(organization_id, periodeget)
+      //   .then(() => notifySseClients(organization_id, periodeget))
+      //   .catch((err) =>
+      //     console.error(
+      //       `[RL51 BG Sync Error] org=${organization_id}:`,
+      //       err.message,
+      //     ),
+      //   );
     }
   } catch (err) {
     res.status(500).send({ status: false, message: err.message });
@@ -1637,7 +1636,8 @@ export const manualSyncRL51 = async (req, res) => {
         .send({ status: false, message: "OrganizationId Tidak Ada" });
     }
 
-    const organization_id = satuSehat.organization_id;
+    // const organization_id = satuSehat.organization_id;
+    const organization_id = satuSehat.organization_id?.substring(0, 9);
 
     // Cegah dobel sync
     const syncing = await isSyncingRL51(organization_id, periode);
