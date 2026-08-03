@@ -56,6 +56,7 @@ import {
   updateDataRLTigaTitikLima,
   deleteDataRLTigaTitikLima,
   getDataRLTigaTitikLimaSatuSehat,
+  getDataRLTigaTitikLimaSatusehatLocal,
 } from "../controllers/RLTigaTitikLimaController.js";
 
 // RL 3.6
@@ -162,6 +163,7 @@ import {
   deleteRLTigaTitikDua,
   updateRLTigaTitikDua,
   getDataRLTigaTitikDuaSatuSehat,
+  getDataRLTigaTitikDuaSatusehatLocal,
 } from "../controllers/RLTigaTitikDuaController.js";
 
 // RL 3.2 Validasi
@@ -575,6 +577,11 @@ router.get(
   "/apisirs6v2/rltigatitikduasatusehat",
   verifyToken,
   getDataRLTigaTitikDuaSatuSehat,
+);
+router.get(
+  "/apisirs6v2/getDataRLTigaTitikDuaSatusehatLocal",
+  verifyToken,
+  getDataRLTigaTitikDuaSatusehatLocal,
 );
 router.patch(
   "/apisirs6v2/rltigatitikdua/:id",
@@ -1127,6 +1134,12 @@ router.get(
   "/apisirs6v2/rltigatitiklimasatusehat",
   verifyToken,
   getDataRLTigaTitikLimaSatuSehat,
+);
+
+router.get(
+  "/apisirs6v2/getDataRLTigaTitikLimaSatusehatLocal",
+  verifyToken,
+  getDataRLTigaTitikLimaSatusehatLocal,
 );
 
 // Jenis Kegiatan
