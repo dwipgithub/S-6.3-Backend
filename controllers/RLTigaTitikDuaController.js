@@ -814,3 +814,73 @@ export const getDataRLTigaTitikDuaSatuSehat = async (req, res) => {
         })
     }
 }
+
+export const getDataRLTigaTitikDuaSatusehatLocal = async (req, res) => {
+    try {
+        const bulan_laporan = (
+            req.query.bulan_laporan ||
+            req.query.periode ||
+            req.query.month_year ||
+            ''
+        ).toString().trim()
+
+        if (!bulan_laporan) {
+            return res.status(400).json({
+                status: false,
+                message: "Parameter 'bulan_laporan' wajib diisi."
+            })
+        }
+
+        if (!/^\d{4}-\d{2}$/.test(bulan_laporan)) {
+            return res.status(400).json({
+                status: false,
+                message: "Format bulan_laporan harus YYYY-MM."
+            })
+        }
+
+        const rsId = (req.query.rsId || '').toString().trim()
+
+        if (!rsId) {
+            return res.status(400).json({
+                status: false,
+                message: "Parameter 'rsId' wajib diisi."
+            })
+        }
+
+        const satuSehat = await satu_sehat_id.findOne({
+            where: {
+                kode_baru_faskes: rsId
+            },
+            attributes: ['organization_id']
+        })
+
+        if (!satuSehat) {
+            return res.status(404).json({
+                status: false,
+                message: "OrganizationId Tidak Ada"
+            })
+        }
+
+        const organization_id = satuSehat.organization_id?.substring(0, 9)
+
+        const data = await RLTigaTitikDuaSatusehat.findAll({
+            where: {
+                bulan_laporan,
+                organization_id
+            },
+            order: [['jenis_pelayanan', 'ASC']]
+        })
+
+        return res.status(200).json({
+            status: true,
+            message: data.length ? 'data found' : 'data not found',
+            data: data.map((row) => row.toJSON())
+        })
+    } catch (error) {
+        return res.status(500).json({
+            status: false,
+            message: "Gagal mengambil data RL 3.2 Satusehat lokal",
+            detail: error.message
+        })
+    }
+}

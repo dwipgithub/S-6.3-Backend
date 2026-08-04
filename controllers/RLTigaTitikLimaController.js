@@ -484,3 +484,45 @@ export const getDataRLTigaTitikLimaSatuSehat = async (req, res) => {
         })
     }
 }
+
+export const getDataRLTigaTitikLimaSatusehatLocal = async (req, res) => {
+    try {
+        const where = {};
+
+        if (req.query.month_year) {
+            const periodeStr = req.query.month_year.toString().trim();
+            if (/^\d{4}-\d{2}$/.test(periodeStr)) {
+                where.bulan_laporan = `${periodeStr}-01`;
+            }
+        }
+
+        if (req.query.rsId) {
+            const satuSehat = await satu_sehat_id.findOne({
+                where: { kode_baru_faskes: req.query.rsId },
+                attributes: ["organization_id"],
+            });
+            if (satuSehat) {
+                where.organization_id = satuSehat.organization_id?.substring(0, 9);
+            }
+        } else if (req.query.organization_id) {
+            where.organization_id = req.query.organization_id;
+        }
+
+        const data = await RLTigaTitikLimaSatusehat.findAll({
+            where,
+            order: [["jenis_kegiatan", "ASC"]],
+        });
+
+        return res.status(200).json({
+            status: true,
+            message: "data found",
+            data,
+        });
+    } catch (err) {
+        return res.status(500).json({
+            status: false,
+            message: "Gagal mengambil data RL 3.5 Satusehat lokal",
+            detail: err.message,
+        });
+    }
+}

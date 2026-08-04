@@ -212,8 +212,24 @@ export const getDataRLTigaTitikEmpatSatusehatLocal = async (req, res) => {
   try {
     const where = {};
     if (req.query.month) where.month = req.query.month;
-    if (req.query.organization_id)
+    if (req.query.organization_id) {
       where.organization_id = req.query.organization_id;
+    } else if (req.query.rsId) {
+      const satuSehat = await satu_sehat_id.findOne({
+        where: { kode_baru_faskes: req.query.rsId },
+        attributes: ["organization_id"],
+      });
+
+      if (!satuSehat) {
+        return res.status(404).json({
+          status: false,
+          message: "OrganizationId Tidak Ada",
+        });
+      }
+
+      where.organization_id = satuSehat.organization_id?.substring(0, 9);
+    }
+
     const data = await RLTigaTitikEmpatSatusehat.findAll({ where });
     res.status(200).json({
       status: true,
