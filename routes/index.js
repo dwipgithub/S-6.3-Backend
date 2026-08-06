@@ -241,6 +241,9 @@ import {
   deleteDataRLTigaTitikSepuluh,
   getDataRLTigaTitikSepuluhDetails,
   getDataRLTigaTitikSepuluhById,
+  getDataRLTigaTitikSepuluhWithSatuSehat,
+  subscribeSyncStatusRL310,
+  manualSyncRL310,
 } from "../controllers/RLTigaTitikSepuluhController.js";
 
 // RL 3.11
@@ -1424,6 +1427,27 @@ router.patch(
   verifyToken,
   verifyHmac,
   updateDataRLTigaTitikSepuluh,
+);
+
+// RL 3.10 Satu Sehat
+router.get(
+  "/apisirs6v2/rltigatitiksepuluhsatusehat",
+  verifyToken,
+  getDataRLTigaTitikSepuluhWithSatuSehat,
+);
+
+router.get(
+  "/apisirs6v2/rltigatitiksepuluhsatusehat/subscribe",
+  verifyToken,
+  subscribeSyncStatusRL310,
+);
+
+router.post(
+  "/apisirs6v2/rltigatitiksepuluhsatusehat/sync",
+  verifyCsrfToken,
+  verifyToken,
+  verifyHmac,
+  manualSyncRL310,
 );
 
 // RL 3.11

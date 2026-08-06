@@ -75,7 +75,58 @@ export const rlTigaTitikSepuluhDetail = databaseSIRS.define(
     user_id: {
       type: DataTypes.INTEGER,
     },
-  }
+  },
+);
+
+export const rlTigaTitikSepuluhSatuSehat = databaseSIRS.define(
+  "rl_tiga_titik_sepuluh_satusehat",
+  {
+    organization_id: {
+      type: DataTypes.STRING,
+    },
+    periode_laporan: {
+      type: DataTypes.STRING,
+    },
+    jenis_spesialisasi_id: {
+      type: DataTypes.INTEGER,
+    },
+    rm_diterima_puskesmas: {
+      type: DataTypes.INTEGER,
+    },
+    rm_diterima_rs: {
+      type: DataTypes.INTEGER,
+    },
+    rm_diterima_faskes_lain: {
+      type: DataTypes.INTEGER,
+    },
+    rm_diterima_total_rm: {
+      type: DataTypes.INTEGER,
+    },
+    rm_dikembalikan_puskesmas: {
+      type: DataTypes.INTEGER,
+    },
+    rm_dikembalikan_rs: {
+      type: DataTypes.INTEGER,
+    },
+    rm_dikembalikan_faskes_lain: {
+      type: DataTypes.INTEGER,
+    },
+    rm_dikembalikan_total_rm: {
+      type: DataTypes.INTEGER,
+    },
+    keluar_pasien_rujukan: {
+      type: DataTypes.INTEGER,
+    },
+    keluar_pasien_datang_sendiri: {
+      type: DataTypes.INTEGER,
+    },
+    keluar_total_keluar: {
+      type: DataTypes.INTEGER,
+    },
+    keluar_diterima_kembali: {
+      type: DataTypes.INTEGER,
+    },
+  },
 );
 
 rlTigaTitikSepuluh.hasMany(rlTigaTitikSepuluhDetail, {
@@ -95,66 +146,11 @@ rlTigaTitikSepuluhDetail.belongsTo(jenisSpesialisTigaTitikSepuluh, {
   foreignKey: "jenis_spesialis_rl_tiga_titik_sepuluh_id",
 });
 
-//old-------------------------------------------------------------------------------------------------------------------------
-// export const rlTigaTitikSepuluhHeader = databaseSIRS.define(
-//   "rl_tiga_titik_sepuluh",
-//   {
-//     rs_id: {
-//       type: DataTypes.STRING,
-//     },
-//     tahun: {
-//       type: DataTypes.INTEGER,
-//     },
-//     user_id: {
-//       type: DataTypes.INTEGER,
-//     },
-//   }
-// );
+jenisSpesialisTigaTitikSepuluh.hasMany(rlTigaTitikSepuluhSatuSehat, {
+  foreignKey: "id",
+});
 
-// export const rlTigaTitikSepuluhDetail = databaseSIRS.define(
-//   "rl_tiga_titik_sepuluh_detail",
-//   {
-//     rl_tiga_titik_sepuluh_id: {
-//       type: DataTypes.INTEGER,
-//     },
-//     rs_id: {
-//       type: DataTypes.INTEGER,
-//     },
-//     tahun: {
-//       type: DataTypes.INTEGER,
-//     },
-//     jenis_kegiatan_id: {
-//       type: DataTypes.INTEGER,
-//     },
-//     jumlah: {
-//       type: DataTypes.INTEGER,
-//     },
-//     user_id: {
-//       type: DataTypes.INTEGER,
-//     },
-//   }
-// );
-
-// export const jenisKegiatan = databaseSIRS.define("jenis_kegiatan", {
-//   nama: {
-//     type: DataTypes.STRING,
-//   },
-//   no: {
-//     type: DataTypes.NUMBER,
-//   },
-// });
-
-// rlTigaTitikSepuluhHeader.hasMany(rlTigaTitikSepuluhDetail, {
-//   foreignKey: "rl_tiga_titik_sepuluh_id",
-// });
-
-// rlTigaTitikSepuluhDetail.belongsTo(rlTigaTitikSepuluhHeader, {
-//   foreignKey: "id",
-// });
-
-// jenisKegiatan.hasMany(rlTigaTitikSepuluhDetail, {
-//   foreignKey: "id",
-// });
-// rlTigaTitikSepuluhDetail.belongsTo(jenisKegiatan, {
-//   foreignKey: "jenis_kegiatan_id",
-// });
+rlTigaTitikSepuluhSatuSehat.belongsTo(jenisSpesialisTigaTitikSepuluh, {
+  as: "jenis_spesialisasi",
+  foreignKey: "jenis_spesialisasi_id",
+});

@@ -6,3 +6,6 @@
 .env
 request.rest
 package-lock.json
+
+.fallow
+ai.md
