@@ -14,6 +14,16 @@ export const fetchRL310FromSatuSehat = async (organization_id, periode) => {
   return res.data;
 };
 
+export const fetchRL311FromSatuSehat = async (organization_id, year) => {
+  const res = await axios.get(`${BASE_URL}/rl311`, {
+    headers: { "X-API-Key": API_KEY },
+    params: { year, organization_id },
+    timeout: 60000,
+  });
+
+  return res.data;
+};
+
 export const fetchRL317FromSatuSehat = async (organization_id, year) => {
   const res = await axios.get(`${BASE_URL}/rl317`, {
     headers: { "X-API-Key": API_KEY },
