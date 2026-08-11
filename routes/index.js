@@ -258,6 +258,9 @@ import {
   getRLTigaTitikSebelasById,
   updateDataRLTigaTitikSebelas,
   deleteDataRLTigaTitikSebelas,
+  getDataRLTigaTitikSebelasWithSatuSehat,
+  manualSyncRL311,
+  subscribeSyncStatusRL311,
 } from "../controllers/RLTigaTitikSebelasController.js";
 
 // RL 3.12
@@ -1494,6 +1497,27 @@ router.delete(
   verifyToken,
   verifyHmac,
   deleteDataRLTigaTitikSebelas,
+);
+
+// RL 3.10 Satu Sehat
+router.get(
+  "/apisirs6v2/rltigatitiksebelassatusehat",
+  verifyToken,
+  getDataRLTigaTitikSebelasWithSatuSehat,
+);
+
+router.get(
+  "/apisirs6v2/rltigatitiksebelassatusehat/subscribe",
+  verifyToken,
+  subscribeSyncStatusRL311,
+);
+
+router.post(
+  "/apisirs6v2/rltigatitiksebelassatusehat/sync",
+  verifyCsrfToken,
+  verifyToken,
+  verifyHmac,
+  manualSyncRL311,
 );
 
 // RL 3.12

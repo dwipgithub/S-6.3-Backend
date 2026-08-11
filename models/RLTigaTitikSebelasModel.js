@@ -15,7 +15,7 @@ export const rlTigaTitikSebelasHeader = databaseSIRS.define(
     user_id: {
       type: DataTypes.INTEGER,
     },
-  }
+  },
 );
 
 export const rlTigaTitikSebelasDetail = databaseSIRS.define(
@@ -39,7 +39,25 @@ export const rlTigaTitikSebelasDetail = databaseSIRS.define(
     user_id: {
       type: DataTypes.INTEGER,
     },
-  }
+  },
+);
+
+export const rlTigaTitikSebelasSatuSehat = databaseSIRS.define(
+  "rl_tiga_titik_sebelas_satusehat",
+  {
+    organization_id: {
+      type: DataTypes.STRING,
+    },
+    periode: {
+      type: DataTypes.INTEGER,
+    },
+    jenis_kegiatan_id: {
+      type: DataTypes.INTEGER,
+    },
+    jumlah: {
+      type: DataTypes.INTEGER,
+    },
+  },
 );
 
 export const get = (req, callback) => {
@@ -132,7 +150,7 @@ export const show = (id, callback) => {
       },
       (error) => {
         throw error;
-      }
+      },
     )
     .catch((error) => {
       console.log(error);
@@ -149,9 +167,16 @@ rlTigaTitikSebelasDetail.belongsTo(rlTigaTitikSebelasHeader, {
 
 JenisKegiatanRLTigaTitikSebelas.hasMany(rlTigaTitikSebelasDetail, {
   foreignKey: "id",
-  // as: "test",
 });
 
 rlTigaTitikSebelasDetail.belongsTo(JenisKegiatanRLTigaTitikSebelas, {
   foreignKey: "rl_tiga_titik_sebelas_jenis_kegiatan_id",
+});
+
+JenisKegiatanRLTigaTitikSebelas.hasMany(rlTigaTitikSebelasSatuSehat, {
+  foreignKey: "id",
+});
+
+rlTigaTitikSebelasSatuSehat.belongsTo(JenisKegiatanRLTigaTitikSebelas, {
+  foreignKey: "jenis_kegiatan_id",
 });
