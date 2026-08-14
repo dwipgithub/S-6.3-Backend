@@ -166,3 +166,114 @@ const transformItem = (item) => {
 
   return result;
 };
+
+//RL 3.9
+const transformItem39 = (item, orgId, tahun, bulan) => {
+  return {
+    organization_id: orgId,
+    tahun: tahun,
+    bulan: bulan,
+    jenis_kegiatan: item.label,
+    jumlah: item.jumlah ?? 0,
+  };
+};
+
+export const doSync39 = async (organization_id, periode) => {
+  const TIPE_RL_39 = "rl_3_9"; // Gunakan konstanta tipe RL 3.9
+
+  const logEntry = await syncLog.create({
+    orgId: organization_id,
+    tipe_rl: TIPE_RL_39,
+    periode,
+    status: "syncing",
+  });
+
+  try {
+    const rawData = await fetchRL39FromSatuSehat(organization_id, periode);
+
+    if (!rawData || rawData.status === 404 || !rawData.data) {
+      await logEntry.update({
+        status: "success",
+        total_data: 0,
+        synced_at: new Date(),
+        error_msg: rawData?.message ?? "data not found",
+      });
+      return { success: true, total: 0 };
+    }
+
+    // Ambil array dari property 'jenis_pemeriksaan_kategori' berdasarkan respon JSON SatuSehat
+    const dataArray = Array.isArray(rawData.data?.jenis_pemeriksaan_kategori)
+      ? rawData.data.jenis_pemeriksaan_kategori
+      : [];
+
+    if (dataArray.length === 0) {
+      await logEntry.update({
+        status: "success",
+        total_data: 0,
+        synced_at: new Date(),
+      });
+      return { success: true, total: 0 };
+    }
+
+    // Ekstrak orgId, tahun, bulan dari rawData.data
+    const orgId = rawData.data.organization_id || organization_id;
+    const tahun = rawData.data.tahun;
+    const bulan = rawData.data.bulan;
+
+    // Transformasi data menggunakan transformer khusus RL 3.9
+    const mapped = dataArray.map((item) =>
+      transformItem39(item, orgId, tahun, bulan)
+    );
+
+    // Bulk insert / update
+    await rlTigaTitikSembilanSatuSehat.bulkCreate(mapped, {
+      updateOnDuplicate: ["jumlah"], // Tentukan kolom mana yang akan diupdate saat duplicate
+    });
+
+    await logEntry.update({
+      status: "success",
+      total_data: mapped.length,
+      synced_at: new Date(),
+    });
+
+    return { success: true, total: mapped.length };
+  } catch (err) {
+    const errStatus = err.response?.status || err.status;
+    const errData = err.response?.data;
+
+    if (errStatus === 404 || errData?.status === 404) {
+      await logEntry.update({
+        status: "success",
+        total_data: 0,
+        synced_at: new Date(),
+        error_msg: errData?.message ?? "data not found",
+      });
+      return { success: true, total: 0 };
+    }
+
+    await logEntry.update({ status: "failed", error_msg: err.message });
+    throw err;
+  }
+};
+
+export const getLastSyncInfo39 = async (orgId, periode, tipe_rl = "rl_3_9") => {
+  return await syncLog.findOne({
+    where: { orgId: orgId, tipe_rl, periode },
+    order: [["synced_at", "DESC"]],
+    attributes: ["status", "synced_at", "total_data", "error_msg"],
+  });
+};
+
+export const isSyncing39 = async (orgId, periode, tipe_rl = "rl_3_9") => {
+  const log = await syncLog.findOne({
+    where: {
+      orgId: orgId,
+      tipe_rl,
+      periode,
+      status: "syncing",
+      createdAt: { [Op.gte]: new Date(Date.now() - 5 * 60000) },
+    },
+  });
+  return !!log;
+};
+//END RL 3.9

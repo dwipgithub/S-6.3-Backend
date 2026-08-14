@@ -108,7 +108,7 @@ export const get = (req, callback) => {
   const sqlFilterValue = []
 
   const rsId = req.query.rsId || null
-    const periode = req.query.periode || null
+  const periode = req.query.periode || null
 
   if (rsId != null) {
     filter.push("rl_tiga_titik_sembilan_detail.rs_id IN ( ? ) ")
@@ -169,17 +169,13 @@ export const show = (id, callback) => {
       type: QueryTypes.SELECT,
       replacements: sqlFilterValue
   })
-  .then(
-      (res) => {
-          callback(null, res)
-      },(error) => {
-          throw error
-      }
-  )
+  .then((res) => {
+      callback(null, res)
+  })
   .catch((error) => {
-          console.log(error)
-      }
-  )
+      console.error(error)
+      callback(error, null)
+  })
 }
 
 rlTigaTitikSembilan.hasMany(rlTigaTitikSembilanDetail, {foreignKey:'rl_tiga_titik_sembilan_id'})
