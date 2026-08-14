@@ -1412,6 +1412,20 @@ router.patch(
   updateRLTigaTitikSembilan,
 );
 
+router.get(
+  "/apisirs6v2/rltigatitiksembilansatusehat",
+  verifyToken,
+  getRLTigaTitikSembilanSatuSehat,
+);
+
+router.post(
+  "/apisirs6v2/rltigatitiksembilansatusehat/sync",
+  verifyCsrfToken,
+  verifyToken,
+  verifyHmac,
+  manualSyncRL39,
+);
+
 // RL 3.10
 router.get(
   "/apisirs6v2/rltigatitiksepuluh",

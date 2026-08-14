@@ -4,6 +4,16 @@ import axios from "axios";
 const BASE_URL = process.env.SATUSEHAT_BASE_URL;
 const API_KEY = process.env.SATUSEHAT_API_KEY;
 
+export const fetchRL39FromSatuSehat = async (organization_id, periode) => {
+  const res = await axios.get(`${BASE_URL}/rl39`, {
+    headers: { "X-API-Key": API_KEY },
+    params: { bulan_laporan: periode, organization_id },
+    timeout: 60000,
+  });
+
+  return res.data;
+};
+
 export const fetchRL310FromSatuSehat = async (organization_id, periode) => {
   const res = await axios.get(`${BASE_URL}/rl310`, {
     headers: { "X-API-Key": API_KEY },
