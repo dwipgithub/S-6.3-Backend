@@ -233,6 +233,8 @@ import {
   insertRLTigaTitikSembilan,
   deleteRLTigaTitikSembilan,
   updateRLTigaTitikSembilan,
+  getRLTigaTitikSembilanSatuSehat,
+  manualSyncRL39,
 } from "../controllers/RLTigaTitikSembilanController.js";
 
 //RL3.10
@@ -1411,7 +1413,6 @@ router.patch(
   verifyHmac,
   updateRLTigaTitikSembilan,
 );
-
 router.get(
   "/apisirs6v2/rltigatitiksembilansatusehat",
   verifyToken,
