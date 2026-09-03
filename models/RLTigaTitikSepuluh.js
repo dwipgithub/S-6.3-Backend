@@ -84,6 +84,9 @@ export const rlTigaTitikSepuluhSatuSehat = databaseSIRS.define(
     organization_id: {
       type: DataTypes.STRING,
     },
+    organization_name: {
+      type: DataTypes.STRING,
+    },
     periode_laporan: {
       type: DataTypes.STRING,
     },

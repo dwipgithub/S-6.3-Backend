@@ -53,6 +53,7 @@ export const rlTigaTitikTujuhBelasSatuSehat = databaseSIRS.define(
   "rl_tiga_titik_tujuh_belas_satusehat",
   {
     organization_id: { type: DataTypes.STRING },
+    organization_name: { type: DataTypes.STRING },
     periode: { type: DataTypes.INTEGER },
     golongan_obat_id: { type: DataTypes.INTEGER },
     jumlah_item_obat: {

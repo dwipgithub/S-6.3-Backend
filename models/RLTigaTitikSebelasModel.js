@@ -48,6 +48,9 @@ export const rlTigaTitikSebelasSatuSehat = databaseSIRS.define(
     organization_id: {
       type: DataTypes.STRING,
     },
+    organization_name: {
+      type: DataTypes.STRING,
+    },
     periode: {
       type: DataTypes.INTEGER,
     },

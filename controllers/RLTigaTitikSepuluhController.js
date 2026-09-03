@@ -569,6 +569,7 @@ export const getDataRLTigaTitikSepuluhWithSatuSehat = async (req, res) => {
   }
 
   const rsIdFinal = req.user.jenisUserId == 4 ? req.user.satKerId : rsId;
+  const namaRs = req.user.jenisUserId == 4 ? req.user.nama : null;
 
   try {
     const offset = (page - 1) * limit;
@@ -629,7 +630,7 @@ export const getDataRLTigaTitikSepuluhWithSatuSehat = async (req, res) => {
     const stale = await isStale(organization_id, periode, "rl_3_10");
 
     if (stale && !currentlySyncing) {
-      doSync(organization_id, periode)
+      doSync(organization_id, periode, namaRs)
         .then(() => notifySseClients(organization_id, periode))
         .catch((err) =>
           console.error(`[Sync BG Error] RS ${rsIdFinal}:`, err.message),
@@ -669,6 +670,7 @@ export const manualSyncRL310 = async (req, res) => {
     }
 
     const organization_id = satuSehat.organization_id?.substring(0, 9);
+    const namaRs = req.user.jenisUserId == 4 ? req.user.nama : null;
 
     // Cegah dobel sync
     const syncing = await isSyncing(organization_id, periode, "rl_3_10");
@@ -679,7 +681,7 @@ export const manualSyncRL310 = async (req, res) => {
     }
 
     // Langsung sync tanpa cek isStale (ini manual, jadi force)
-    doSync(organization_id, periode)
+    doSync(organization_id, periode, namaRs)
       .then(() => notifySseClients(organization_id, periode))
       .catch((err) => console.error("[Manual Sync Error]", err.message));
 
@@ -711,7 +713,7 @@ export const subscribeSyncStatusRL310 = (req, res) => {
   });
 };
 
-const doSync = async (organization_id, periode) => {
+const doSync = async (organization_id, periode, namaRs) => {
   const logEntry = await syncLog.create({
     orgId: organization_id,
     tipe_rl: "rl_3_10",
@@ -747,6 +749,7 @@ const doSync = async (organization_id, periode) => {
 
     const mapped = dataArray.map((item) => ({
       organization_id,
+      organization_name: namaRs,
       periode_laporan: periode,
       jenis_spesialisasi_id: item.jenis_spesialisasi_id,
       rm_diterima_puskesmas: item.diterima_dari.diterima_dari_puskesmas ?? 0,
