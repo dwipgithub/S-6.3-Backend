@@ -1,7 +1,8 @@
 // services/rlSync.service.js
 import { syncLog } from "../models/SyncLogModel.js";
 import { rlEmpatTitikSatuSatuSehat } from "../models/RLEmpatTitikSatuSatuSehatModel.js";
-import { fetchRL41FromSatuSehat } from "./satusehat.service.js";
+import { rlTigaTitikSembilanSatuSehat } from "../models/RLTigaTitikSembilanSatuSehatModel.js";
+import { fetchRL41FromSatuSehat, fetchRL39FromSatuSehat } from "./satusehat.service.js";
 import { Op } from "sequelize"; // ← tambahkan ini
 
 const STALE_MINUTES = parseInt(process.env.SYNC_STALE_MINUTES) || 1440;
@@ -179,7 +180,7 @@ const transformItem39 = (item, orgId, tahun, bulan) => {
 };
 
 export const doSync39 = async (organization_id, periode) => {
-  const TIPE_RL_39 = "rl_3_9"; // Gunakan konstanta tipe RL 3.9
+  const TIPE_RL_39 = "rl_3_9";
 
   const logEntry = await syncLog.create({
     orgId: organization_id,
@@ -201,7 +202,6 @@ export const doSync39 = async (organization_id, periode) => {
       return { success: true, total: 0 };
     }
 
-    // Ambil array dari property 'jenis_pemeriksaan_kategori' berdasarkan respon JSON SatuSehat
     const dataArray = Array.isArray(rawData.data?.jenis_pemeriksaan_kategori)
       ? rawData.data.jenis_pemeriksaan_kategori
       : [];
@@ -215,20 +215,25 @@ export const doSync39 = async (organization_id, periode) => {
       return { success: true, total: 0 };
     }
 
-    // Ekstrak orgId, tahun, bulan dari rawData.data
     const orgId = rawData.data.organization_id || organization_id;
     const tahun = rawData.data.tahun;
     const bulan = rawData.data.bulan;
 
-    // Transformasi data menggunakan transformer khusus RL 3.9
     const mapped = dataArray.map((item) =>
       transformItem39(item, orgId, tahun, bulan)
     );
 
-    // Bulk insert / update
-    await rlTigaTitikSembilanSatuSehat.bulkCreate(mapped, {
-      updateOnDuplicate: ["jumlah"], // Tentukan kolom mana yang akan diupdate saat duplicate
+    // 1. Hapus data lama berdasarkan organization_id, bulan, dan tahun
+    await rlTigaTitikSembilanSatuSehat.destroy({
+      where: {
+        organization_id: orgId,
+        bulan: bulan,
+        tahun: tahun,
+      },
     });
+
+    // 2. Insert data baru dari API SATUSEHAT
+    await rlTigaTitikSembilanSatuSehat.bulkCreate(mapped);
 
     await logEntry.update({
       status: "success",
