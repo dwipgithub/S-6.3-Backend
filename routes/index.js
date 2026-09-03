@@ -274,6 +274,9 @@ import {
   deleteDataRLTigaTitikDuaBelas,
   getRLTigaTitikDuaBelas,
   showRLTigaTitikDuaBelas,
+  getDataRLTigaTitikDuaBelasWithSatuSehat,
+  subscribeSyncStatusRL312,
+  manualSyncRL312,
 } from "../controllers/RLTigaTitikDuaBelasController.js";
 
 // RL3.15
@@ -1566,6 +1569,27 @@ router.delete(
   verifyToken,
   verifyHmac,
   deleteDataRLTigaTitikDuaBelas,
+);
+
+// RL 3.12 Satu Sehat
+router.get(
+  "/apisirs6v2/rltigatitikduabelassatusehat",
+  verifyToken,
+  getDataRLTigaTitikDuaBelasWithSatuSehat,
+);
+
+router.get(
+  "/apisirs6v2/rltigatitikduabelassatusehat/subscribe",
+  verifyToken,
+  subscribeSyncStatusRL312,
+);
+
+router.post(
+  "/apisirs6v2/rltigatitikduabelassatusehat/sync",
+  verifyCsrfToken,
+  verifyToken,
+  verifyHmac,
+  manualSyncRL312,
 );
 
 // RL 3.13

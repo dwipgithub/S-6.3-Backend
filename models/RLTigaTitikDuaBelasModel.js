@@ -14,7 +14,7 @@ export const rlTigaTitikDuaBelasHeader = databaseSIRS.define(
     user_id: {
       type: DataTypes.INTEGER,
     },
-  }
+  },
 );
 
 export const rlTigaTitikDuaBelasDetail = databaseSIRS.define(
@@ -50,7 +50,40 @@ export const rlTigaTitikDuaBelasDetail = databaseSIRS.define(
     user_id: {
       type: DataTypes.INTEGER,
     },
-  }
+  },
+);
+
+export const rlTigaTitikDuaBelasSatuSehat = databaseSIRS.define(
+  "rl_tiga_titik_dua_belas_satusehat",
+  {
+    organization_id: {
+      type: DataTypes.STRING,
+    },
+    organization_name: {
+      type: DataTypes.STRING,
+    },
+    periode_laporan: {
+      type: DataTypes.STRING,
+    },
+    jenis_spesialisasi_id: {
+      type: DataTypes.INTEGER,
+    },
+    khusus: {
+      type: DataTypes.INTEGER,
+    },
+    besar: {
+      type: DataTypes.INTEGER,
+    },
+    sedang: {
+      type: DataTypes.INTEGER,
+    },
+    kecil: {
+      type: DataTypes.INTEGER,
+    },
+    total: {
+      type: DataTypes.INTEGER,
+    },
+  },
 );
 
 export const get = (req, callback) => {
@@ -91,7 +124,7 @@ export const get = (req, callback) => {
     const customDate = new Date(periode);
     // filter.push("rl_tiga_titik_dua_belas_detail.periode = ?");
     filter.push(
-      "YEAR(rl_tiga_titik_dua_belas_detail.periode) = ? AND MONTH(rl_tiga_titik_dua_belas_detail.periode) = ? "
+      "YEAR(rl_tiga_titik_dua_belas_detail.periode) = ? AND MONTH(rl_tiga_titik_dua_belas_detail.periode) = ? ",
     );
     sqlFilterValue.push(customDate.getFullYear());
     sqlFilterValue.push(customDate.getMonth() + 1);
@@ -151,7 +184,7 @@ export const show = (id, callback) => {
       },
       (error) => {
         throw error;
-      }
+      },
     )
     .catch((error) => {
       console.log(error);
@@ -172,4 +205,13 @@ SpesialisasiRLTigaTitikDuaBelas.hasMany(rlTigaTitikDuaBelasDetail, {
 
 rlTigaTitikDuaBelasDetail.belongsTo(SpesialisasiRLTigaTitikDuaBelas, {
   foreignKey: "rl_tiga_titik_dua_belas_spesialisasi_id",
+});
+
+SpesialisasiRLTigaTitikDuaBelas.hasMany(rlTigaTitikDuaBelasSatuSehat, {
+  foreignKey: "id",
+});
+
+rlTigaTitikDuaBelasSatuSehat.belongsTo(SpesialisasiRLTigaTitikDuaBelas, {
+  as: "jenis_spesialisasi",
+  foreignKey: "jenis_spesialisasi_id",
 });
