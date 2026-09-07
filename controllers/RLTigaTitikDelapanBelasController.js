@@ -245,6 +245,7 @@ export const getDataRLTigaTitikDelapanBelasWithSatuSehat = async (req, res) => {
   }
 
   const rsIdFinal = req.user.jenisUserId == 4 ? req.user.satKerId : rsId;
+  const namaRs = req.user.jenisUserId == 4 ? req.user.nama : null;
 
   try {
     const offset = (page - 1) * limit;
@@ -304,7 +305,7 @@ export const getDataRLTigaTitikDelapanBelasWithSatuSehat = async (req, res) => {
     const stale = await isStale(organization_id, periode, "rl_3_18");
 
     if (stale && !currentlySyncing) {
-      doSync(organization_id, periode)
+      doSync(organization_id, periode, namaRs)
         .then(() => notifySseClients(organization_id, periode))
         .catch((err) =>
           console.error(`[Sync BG Error] RS ${rsIdFinal}:`, err.message),
@@ -343,6 +344,7 @@ export const manualSyncRL318 = async (req, res) => {
         .send({ status: false, message: "OrganizationId Tidak Ada" });
     }
 
+    const namaRs = req.user.jenisUserId == 4 ? req.user.nama : null;
     const organization_id = satuSehat.organization_id?.substring(0, 9);
 
     // Cegah dobel sync
@@ -354,7 +356,7 @@ export const manualSyncRL318 = async (req, res) => {
     }
 
     // Langsung sync tanpa cek isStale (ini manual, jadi force)
-    doSync(organization_id, periode)
+    doSync(organization_id, periode, namaRs)
       .then(() => notifySseClients(organization_id, periode))
       .catch((err) => console.error("[Manual Sync Error]", err.message));
 
@@ -386,7 +388,7 @@ export const subscribeSyncStatusRL318 = (req, res) => {
   });
 };
 
-const doSync = async (organization_id, periode) => {
+const doSync = async (organization_id, periode, namaRs) => {
   const logEntry = await syncLog.create({
     orgId: organization_id,
     tipe_rl: "rl_3_18",
@@ -422,6 +424,7 @@ const doSync = async (organization_id, periode) => {
 
     const mapped = dataArray.map((item) => ({
       organization_id,
+      organization_name: namaRs,
       periode,
       golongan_obat_id: item.golongan_obat_id,
       rawat_inap: item.rawat_inap ?? 0,
