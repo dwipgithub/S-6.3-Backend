@@ -344,11 +344,8 @@ export const manualSyncRL39 = async (req, res) => {
                 .send({ status: true, message: "Sedang dalam proses sync" });
         }
 
-        // PERBAIKAN: Menghapus / Mengamankan notifySseClients jika tidak di-import
         doSync39(organization_id, periode)
             .then(() => {
-                // Jika Anda punya helper SSE/Socket, aktifkan kembali import & panggilannya di sini
-                // typeof notifySseClients === 'function' && notifySseClients(organization_id, periode);
             })
             .catch((err) => console.error("[Manual Sync Error]", err.message));
 
