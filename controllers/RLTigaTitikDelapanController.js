@@ -4,8 +4,18 @@ import {
   rlTigaTitikDelapan,
   rlTigaTitikDelapanDetail,
 } from "../models/RLTigaTitikDelapanModel.js";
+import { rlTigaTitikDelapanSatuSehat } from '../models/RLTigaTitikDelapanSatuSehatModel.js'
 import Joi from "joi";
 import joiDate from "@joi/date"
+import { satu_sehat_id, users_sso } from "../models/UserModel.js";
+import { Sequelize } from "sequelize";
+
+import {
+  isStale,
+  isSyncing38,
+  doSync38,
+  getLastSyncInfo38,
+} from "../services/rlSync.service.js";
 
 export const getDataRLTigaTitikDelapan = (req, res) => {
   rlTigaTitikDelapan
@@ -344,4 +354,186 @@ export const deleteDataRLTigaTitikDelapan = async (req, res) => {
       message: error,
     });
   }
+};
+
+export const getRLTigaTitikDelapanSatuSehat = async (req, res) => {
+    const joi = Joi.extend(joiDate);
+    const schema = joi.object({
+        rsId: joi.string().required(),
+        periode: joi.date().format("YYYY-MM").required(),
+        page: joi.number().min(1).default(1),
+        limit: joi.number().min(1).max(200).default(50),
+    });
+
+    const { error, value } = schema.validate(req.query);
+    if (error)
+        return res
+            .status(400)
+            .send({ status: false, message: error.details[0].message });
+
+    const { rsId, periode, page, limit } = value;
+
+    if (req.user.jenisUserId == 4 && rsId != req.user.satKerId) {
+        return res
+            .status(403)
+            .send({ status: false, message: "Kode RS Tidak Sesuai" });
+    }
+    
+    const rsIdFinal = req.user.jenisUserId == 4 ? req.user.satKerId : rsId;
+    const periodeFormatted = req.query.periode; 
+    const periodeShort = req.query.periode;
+
+    const [tahunStr, bulanStr] = periodeFormatted.split('-'); 
+    const bulanClean = parseInt(bulanStr, 10);
+
+    try {
+    const offset = (page - 1) * limit;
+
+    const satuSehat = await satu_sehat_id.findOne({
+        where: { kode_baru_faskes: rsIdFinal },
+        attributes: ["organization_id",],
+    });
+
+    if (!satuSehat) {
+        return res
+            .status(404)
+            .send({ status: false, message: "OrganizationId Tidak Ada" });
+    }
+
+    const organization_id = satuSehat.organization_id?.substring(0, 9);
+
+    const [rows, totalRows, syncInfo, currentlySyncing] = await Promise.all([
+        rlTigaTitikDelapanSatuSehat.findAll({
+          where: { 
+            organization_id, 
+            bulan: bulanClean, 
+            tahun: tahunStr 
+          },
+          limit,
+          offset,
+        }),
+        rlTigaTitikDelapanSatuSehat.count({
+          where: { 
+            organization_id, 
+            bulan: bulanClean, 
+            tahun: tahunStr 
+          },
+        }),
+        getLastSyncInfo38(organization_id, periodeShort),
+        isSyncing38(organization_id, periodeShort),
+    ]);
+
+    // 1. Grouping Data
+    const groupMap = new Map();
+
+    rows.forEach((item) => {
+        const groupId = item.nama_group_id;
+        
+        if (!groupMap.has(groupId)) {
+            groupMap.set(groupId, {
+                nama_group_id: groupId,
+                nama_group: item.nama_group || "",
+                pemeriksaan: []
+            });
+        }
+
+        groupMap.get(groupId).pemeriksaan.push({
+            pemeriksaan_id: item.pemeriksaan_id,
+            pemeriksaan: item.pemeriksaan,
+            jumlah_pemeriksaan: {
+                laki_laki: String(item.jumlah_laki_laki ?? 0),
+                perempuan: String(item.jumlah_perempuan ?? 0)
+            },
+            nilai_rata_rata: {
+                laki_laki: item.rata_rata_laki_laki !== null ? String(item.rata_rata_laki_laki) : null,
+                perempuan: item.rata_rata_perempuan !== null ? String(item.rata_rata_perempuan) : null
+            }
+        });
+    });
+
+    const groupPemeriksaan = Array.from(groupMap.values());
+
+    // 2. PERBAIKAN SORTING: Urutkan item pemeriksaan berdasarkan penomoran hirarki string (2, 2.1, 2.14, 3, 3.1, dst)
+    groupPemeriksaan.forEach((group) => {
+        group.pemeriksaan.sort((a, b) => {
+            return a.pemeriksaan.localeCompare(b.pemeriksaan, undefined, {
+                numeric: true,
+                sensitivity: 'base'
+            });
+        });
+    });
+
+    return res.status(200).send({
+        status: true,
+        message: rows.length ? "data found" : "data not found",
+        data: {
+            organization_id: organization_id, 
+            tahun: parseInt(tahunStr, 10),
+            bulan: bulanClean,
+            group_pemeriksaan: groupPemeriksaan
+        },
+        pagination: {
+            page,
+            limit,
+            totalRows,
+            totalPages: Math.ceil(totalRows / limit),
+        },
+        sync: {
+            lastSync: syncInfo?.synced_at ?? null,
+            status: syncInfo?.status ?? "never",
+            totalData: syncInfo?.total_data ?? 0,
+            isUpdating: currentlySyncing,
+        },
+    });
+
+} catch (err) {
+    return res.status(500).send({ status: false, message: err.message });
+}
+};
+
+export const manualSyncRL38 = async (req, res) => {
+    const { rsId, periode } = req.body;
+
+    if (!rsId || !periode) {
+        return res
+            .status(400)
+            .send({ status: false, message: "rsId dan periode wajib diisi" });
+    }
+
+    if (req.user.jenisUserId == 4 && rsId != req.user.satKerId) {
+        return res
+            .status(403)
+            .send({ status: false, message: "Kode RS Tidak Sesuai" });
+    }
+
+    try {
+        const satuSehat = await satu_sehat_id.findOne({
+            where: { kode_baru_faskes: rsId },
+            attributes: ["organization_id"],
+        });
+
+        if (!satuSehat) {
+            return res
+                .status(404)
+                .send({ status: false, message: "OrganizationId Tidak Ada" });
+        }
+
+        const organization_id = satuSehat.organization_id?.substring(0, 9);
+
+        const syncing = await isSyncing38(organization_id, periode);
+        if (syncing) {
+            return res
+                .status(200)
+                .send({ status: true, message: "Sedang dalam proses sync" });
+        }
+
+        doSync38(organization_id, periode)
+            .then(() => {
+            })
+            .catch((err) => console.error("[Manual Sync Error]", err.message));
+
+        return res.status(200).send({ status: true, message: "Sync dimulai" });
+    } catch (err) {
+        return res.status(500).send({ status: false, message: err.message });
+    }
 };

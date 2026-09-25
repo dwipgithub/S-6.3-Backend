@@ -342,6 +342,8 @@ import {
   getDataRLTigaTitikDelapanDetailPemeriksaan,
   insertDataRLTigaTitikDelapan,
   updateDataRLTigaTitikDelapan,
+  getRLTigaTitikDelapanSatuSehat,
+  manualSyncRL38,
 } from "../controllers/RLTigaTitikDelapanController.js";
 
 // RL 4.1
@@ -1382,6 +1384,20 @@ router.patch(
   verifyToken,
   verifyHmac,
   updateDataRLTigaTitikDelapan,
+);
+
+router.get(
+  "/apisirs6v2/rltigatitikdelapansatusehat",
+  verifyToken,
+  getRLTigaTitikDelapanSatuSehat,
+);
+
+router.post(
+  "/apisirs6v2/rltigatitikdelapansatusehat/sync",
+  verifyCsrfToken,
+  verifyToken,
+  verifyHmac,
+  manualSyncRL38,
 );
 
 // RL 3.9 Baru
