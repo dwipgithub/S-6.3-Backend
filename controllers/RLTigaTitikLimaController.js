@@ -2,6 +2,7 @@ import { databaseSIRS } from '../config/Database.js'
 import { rlTigaTitikLimaHeader, rlTigaTitikLimaDetail, jenisKegiatan, RLTigaTitikLimaSatusehat } from '../models/RLTigaTitikLimaModel.js'
 import Joi from 'joi'
 import axios from 'axios'
+import { Op } from 'sequelize'
 import { satu_sehat_id } from '../models/UserModel.js'
 
 export const getDataRLTigaTitikLima = (req, res) => {
@@ -283,7 +284,8 @@ export const getDataRLTigaTitikLimaSatuSehat = async (req, res) => {
             headers: {
                 'Content-Type': 'application/json',
                 'X-API-Key': apiKey
-            }
+            },
+            timeout: 90000
         })
 
         const raw = response?.data
@@ -351,6 +353,20 @@ export const getDataRLTigaTitikLimaSatuSehat = async (req, res) => {
         // =========================================
         // SIMPAN / UPDATE DATABASE
         // =========================================
+        const existingRows = await RLTigaTitikLimaSatusehat.findAll({
+            where: {
+                bulan_laporan: {
+                    [Op.like]: `${periode}%`
+                },
+                organization_id: organizationIdFinal
+            },
+            attributes: ['bulan_laporan', 'organization_id', 'jenis_kegiatan', 'id']
+        })
+
+        const existingMap = new Map(
+            existingRows.map((row) => [`${row.bulan_laporan}::${row.organization_id}::${row.jenis_kegiatan}`, row])
+        )
+
         let insertedCount = 0
         let updatedCount = 0
         let skippedCount = 0
@@ -412,25 +428,18 @@ export const getDataRLTigaTitikLimaSatuSehat = async (req, res) => {
                     Number(item?.rata_rata_kunjungan_perhari ?? 0)
             }
 
-            const existing =
-                await RLTigaTitikLimaSatusehat.findOne({
-                    where: {
-                        bulan_laporan: payload.bulan_laporan,
-                        organization_id: payload.organization_id,
-                        jenis_kegiatan: payload.jenis_kegiatan
-                    }
-                })
+            const key = `${payload.bulan_laporan}::${payload.organization_id}::${payload.jenis_kegiatan}`
+            const existing = existingMap.get(key)
 
             if (existing) {
 
                 await existing.update(payload)
-
                 updatedCount += 1
 
             } else {
 
-                await RLTigaTitikLimaSatusehat.create(payload)
-
+                const created = await RLTigaTitikLimaSatusehat.create(payload)
+                existingMap.set(key, created)
                 insertedCount += 1
             }
         }
