@@ -359,6 +359,8 @@ import {
   getDataRLEmpatTitikSatuWithSatuSehat,
   subscribeSyncStatus,
   manualSyncRL41,
+  downloadDataRLEmpatTitikSatu,
+  downloadDataRLEmpatTitikSatuSatuSehat,
 } from "../controllers/RLEmpatTitikSatuController.js";
 
 // RL 4.2
@@ -393,6 +395,8 @@ import {
   getDataRL51WithSyncStatus,
   subscribeSyncStatusRL51,
   manualSyncRL51,
+  downloadDataRLLimaTitikSatu,
+  downloadDataRLLimaTitikSatuSatuSehat,
 } from "../controllers/RLLimaTitikSatuController.js";
 
 // RL 3.14
@@ -1948,6 +1952,18 @@ router.get(
   getDataRLEmpatTitikSatuPaging,
 );
 
+router.get(
+  "/apisirs6v2/rlempattitiksatudownload",
+  verifyToken,
+  downloadDataRLEmpatTitikSatu,
+);
+
+router.get(
+  "/apisirs6v2/rlempattitiksatusatusehatdownload",
+  verifyToken,
+  downloadDataRLEmpatTitikSatuSatuSehat,
+);
+
 router.delete(
   "/apisirs6v2/rlempattitiksatu/:id",
   verifyCsrfToken,
@@ -2088,6 +2104,18 @@ router.post(
   verifyToken,
   verifyHmac,
   manualSyncRL51,
+);
+
+router.get(
+  "/apisirs6v2/rllimatitiksatudownload",
+  verifyToken,
+  downloadDataRLLimaTitikSatu,
+);
+
+router.get(
+  "/apisirs6v2/rllimatitiksatusatusehatdownload",
+  verifyToken,
+  downloadDataRLLimaTitikSatuSatuSehat,
 );
 
 // RL 5.3
