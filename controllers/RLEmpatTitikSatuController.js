@@ -1738,6 +1738,7 @@ export const downloadDataRLEmpatTitikSatu = async (req, res) => {
   const schema = joi.object({
     provId: joi.string().allow("", null).optional(),
     kabId: joi.string().allow("", null).optional(),
+    rsId: joi.string().allow("", null).optional(),
     periode: joi.date().format("YYYY-MM").required(),
   });
 
@@ -1747,22 +1748,16 @@ export const downloadDataRLEmpatTitikSatu = async (req, res) => {
       .status(400)
       .send({ status: false, message: error.details[0].message });
 
-  if (req.user.jenisUserId == 4) {
-    return res.status(403).send({
-      status: false,
-      message:
-        "Akses ditolak. User rumah sakit tidak diizinkan mengunduh data ini",
-    });
-  }
-
   const jenisUserId = req.user.jenisUserId;
+
+  // Role 4 TIDAK lagi diblokir -- diizinkan download data RS-nya sendiri saja
   if (jenisUserId === 2) {
     // Dinkes Provinsi — provId ambil dari satKerId di token, bukan dari input
     value.provId = req.user.satKerId;
   } else if (jenisUserId === 3) {
     // Dinkes Kab/Kota — hanya kabId, provId tidak relevan
     value.kabId = req.user.satKerId;
-    value.provId = undefined; // atau null, sesuai kebutuhan query
+    value.provId = undefined;
   }
 
   try {
@@ -1770,6 +1765,7 @@ export const downloadDataRLEmpatTitikSatu = async (req, res) => {
     const username = process.env.username_API_FASKES;
     const password = process.env.password_API_FASKES;
 
+    // Login dilakukan sekali saja, dipakai bersama oleh semua role
     const loginResponse = await axios.post(
       `${baseUrl}/faskes/login`,
       { userName: username, password: password },
@@ -1779,48 +1775,118 @@ export const downloadDataRLEmpatTitikSatu = async (req, res) => {
     const token =
       loginResponse.data.access_token || loginResponse.data.data.access_token;
 
-    const params = {};
+    let rsList = [];
 
-    switch (jenisUserId) {
-      case 1:
-        if (value.provId) params.provinsiId = value.provId;
-        if (value.kabId) params.kabKotaId = value.kabId;
-        // kalau dua-duanya kosong → artinya semua provinsi/semua kabkota
-        break;
+    if (jenisUserId === 4) {
+      // ---- RS sendiri: cukup ambil detail 1 RS, tidak perlu daftar banyak RS ----
+      const kodeRsSendiri = req.user.satKerId;
 
-      case 2:
-        params.provinsiId = req.user.satKerId;
-        if (value.kabId) params.kabKotaId = value.kabId;
-        break;
+      const rsDetailResponse = await axios.get(
+        `${baseUrl}/faskes/rumahsakit/${kodeRsSendiri}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
 
-      case 3:
-        params.kabKotaId = req.user.satKerId;
-        break;
+      const rsDetail = rsDetailResponse.data.data ?? rsDetailResponse.data;
+
+      rsList = [
+        {
+          kodeRs: kodeRsSendiri,
+          namaRs: rsDetail?.nama ?? "",
+          provinsiId: rsDetail?.provinsi_id ?? null,
+          kabKotaId: rsDetail?.kab_kota_id ?? null,
+          provinsiNama: rsDetail?.provinsiNama ?? "",
+          kabKotaNama: rsDetail?.kabKotaNama ?? "",
+        },
+      ];
+    } else if (value.rsId) {
+      // ---- Role 1/2/3 memilih RS spesifik: ambil detail 1 RS itu saja ----
+      const rsDetailResponse = await axios.get(
+        `${baseUrl}/faskes/rumahsakit/${value.rsId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      const rsDetail = rsDetailResponse.data.data ?? rsDetailResponse.data;
+
+      if (!rsDetail) {
+        return res.status(404).send({
+          status: false,
+          message: "Rumah sakit tidak ditemukan",
+        });
+      }
+
+      // Validasi kepemilikan wilayah: RS yang dipilih harus berada
+      // di provinsi/kabkota yang memang jadi scope user ini.
+      if (
+        jenisUserId === 2 &&
+        String(rsDetail.provinsi_id) !== String(req.user.satKerId)
+      ) {
+        return res.status(403).send({
+          status: false,
+          message: "RS yang dipilih bukan berada di wilayah Anda",
+        });
+      }
+      if (
+        jenisUserId === 3 &&
+        String(rsDetail.kab_kota_id) !== String(req.user.satKerId)
+      ) {
+        return res.status(403).send({
+          status: false,
+          message: "RS yang dipilih bukan berada di wilayah Anda",
+        });
+      }
+
+      rsList = [
+        {
+          kodeRs: value.rsId,
+          namaRs: rsDetail?.nama ?? "",
+          provinsiId: rsDetail?.provinsi_id ?? null,
+          kabKotaId: rsDetail?.kab_kota_id ?? null,
+          provinsiNama: rsDetail?.provinsiNama ?? "",
+          kabKotaNama: rsDetail?.kabKotaNama ?? "",
+        },
+      ];
+    } else {
+      // ---- Role 1/2/3 tanpa rsId: ambil daftar RS per wilayah, seperti sebelumnya ----
+      const params = {};
+
+      switch (jenisUserId) {
+        case 1:
+          if (value.provId) params.provinsiId = value.provId;
+          if (value.kabId) params.kabKotaId = value.kabId;
+          break;
+
+        case 2:
+          params.provinsiId = req.user.satKerId;
+          if (value.kabId) params.kabKotaId = value.kabId;
+          break;
+
+        case 3:
+          params.kabKotaId = req.user.satKerId;
+          break;
+      }
+
+      const listRs = await ambilSemuaRs(baseUrl, token, params);
+
+      rsList = listRs
+        .filter((rs) => rs.statusAktivasi === 1)
+        .map((rs) => ({
+          kodeRs: rs.kode,
+          namaRs: rs.nama,
+          provinsiId: rs.provinsi_id,
+          kabKotaId: rs.kab_kota_id,
+          provinsiNama: rs.provinsiNama,
+          kabKotaNama: rs.kabKotaNama,
+        }));
+
+      if (rsList.length === 0) {
+        return res.status(404).send({
+          status: false,
+          message: "Tidak ada rumah sakit aktif pada wilayah yang dipilih",
+        });
+      }
     }
 
-    const listRs = await ambilSemuaRs(baseUrl, token, params);
-
-    const rsList = listRs
-      .filter((rs) => rs.statusAktivasi === 1)
-      .map((rs) => ({
-        kodeRs: rs.kode,
-        namaRs: rs.nama,
-        provinsiId: rs.provinsi_id,
-        kabKotaId: rs.kab_kota_id,
-        provinsiNama: rs.provinsiNama,
-        kabKotaNama: rs.kabKotaNama,
-      }));
-
-    if (rsList.length === 0) {
-      return res.status(404).send({
-        status: false,
-        message: "Tidak ada rumah sakit aktif pada wilayah yang dipilih",
-      });
-    }
-
-    const rsMap = new Map(rsList.map((rs) => [String(rs.kodeRs), rs]));
-    const kodeRsList = rsList.map((rs) => rs.kodeRs);
-    const tahunBulan = `${value.periode.getUTCFullYear()}_${String(value.periode.getUTCMonth() + 1).padStart(2, "0")}`;
+    const tahunBulan = req.query.periode.replace("-", "_");
     const pad = (n) => String(n).padStart(2, "0");
     const now = new Date();
     const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
@@ -1835,14 +1901,14 @@ export const downloadDataRLEmpatTitikSatu = async (req, res) => {
     await tulisExcelRL41({
       res,
       rsList,
-      periode: value.periode,
+      periode: req.query.periode,
       judul: "SIRS ONLINE RL 4.1",
       modelDetail: rlEmpatTitikSatuDetail,
     });
   } catch (err) {
     console.error("downloadDataRLEmpatTitikSatu:", err.message);
     if (res.headersSent) {
-      return res.end(); // file terpotong, tidak bisa kirim JSON lagi
+      return res.end();
     }
     return res.status(500).send({
       status: false,
