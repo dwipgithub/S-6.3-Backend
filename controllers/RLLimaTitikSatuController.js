@@ -1688,6 +1688,7 @@ export const downloadDataRLLimaTitikSatu = async (req, res) => {
   const schema = joi.object({
     provId: joi.string().allow("", null).optional(),
     kabId: joi.string().allow("", null).optional(),
+    rsId: joi.string().allow("", null).optional(),
     periode: joi.date().format("YYYY-MM").required(),
   });
 
@@ -1697,13 +1698,13 @@ export const downloadDataRLLimaTitikSatu = async (req, res) => {
       .status(400)
       .send({ status: false, message: error.details[0].message });
 
-  if (req.user.jenisUserId == 4) {
-    return res.status(403).send({
-      status: false,
-      message:
-        "Akses ditolak. User rumah sakit tidak diizinkan mengunduh data ini",
-    });
-  }
+  // if (req.user.jenisUserId == 4) {
+  //   return res.status(403).send({
+  //     status: false,
+  //     message:
+  //       "Akses ditolak. User rumah sakit tidak diizinkan mengunduh data ini",
+  //   });
+  // }
 
   const jenisUserId = req.user.jenisUserId;
   if (jenisUserId === 2) {
@@ -1729,41 +1730,152 @@ export const downloadDataRLLimaTitikSatu = async (req, res) => {
 
     const params = {};
 
-    switch (jenisUserId) {
-      case 1:
-        if (value.provId) params.provinsiId = value.provId;
-        if (value.kabId) params.kabKotaId = value.kabId;
-        break;
+    // switch (jenisUserId) {
+    //   case 1:
+    //     if (value.provId) params.provinsiId = value.provId;
+    //     if (value.kabId) params.kabKotaId = value.kabId;
+    //     break;
 
-      case 2:
-        params.provinsiId = req.user.satKerId;
-        if (value.kabId) params.kabKotaId = value.kabId;
-        break;
+    //   case 2:
+    //     params.provinsiId = req.user.satKerId;
+    //     if (value.kabId) params.kabKotaId = value.kabId;
+    //     break;
 
-      case 3:
-        params.kabKotaId = req.user.satKerId;
-        break;
+    //   case 3:
+    //     params.kabKotaId = req.user.satKerId;
+    //     break;
+    // }
+
+    let rsList = [];
+
+    if (jenisUserId === 4) {
+      // ---- RS sendiri: cukup ambil detail 1 RS, tidak perlu daftar banyak RS ----
+      const kodeRsSendiri = req.user.satKerId;
+
+      const rsDetailResponse = await axios.get(
+        `${baseUrl}/faskes/rumahsakit/${kodeRsSendiri}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      const rsDetail = rsDetailResponse.data.data ?? rsDetailResponse.data;
+
+      rsList = [
+        {
+          kodeRs: kodeRsSendiri,
+          namaRs: rsDetail?.nama ?? "",
+          provinsiId: rsDetail?.provinsi_id ?? null,
+          kabKotaId: rsDetail?.kab_kota_id ?? null,
+          provinsiNama: rsDetail?.provinsiNama ?? "",
+          kabKotaNama: rsDetail?.kabKotaNama ?? "",
+        },
+      ];
+    } else if (value.rsId) {
+      // ---- Role 1/2/3 memilih RS spesifik: ambil detail 1 RS itu saja ----
+      const rsDetailResponse = await axios.get(
+        `${baseUrl}/faskes/rumahsakit/${value.rsId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      const rsDetail = rsDetailResponse.data.data ?? rsDetailResponse.data;
+
+      if (!rsDetail) {
+        return res.status(404).send({
+          status: false,
+          message: "Rumah sakit tidak ditemukan",
+        });
+      }
+
+      // Validasi kepemilikan wilayah: RS yang dipilih harus berada
+      // di provinsi/kabkota yang memang jadi scope user ini.
+      if (
+        jenisUserId === 2 &&
+        String(rsDetail.provinsi_id) !== String(req.user.satKerId)
+      ) {
+        return res.status(403).send({
+          status: false,
+          message: "RS yang dipilih bukan berada di wilayah Anda",
+        });
+      }
+      if (
+        jenisUserId === 3 &&
+        String(rsDetail.kab_kota_id) !== String(req.user.satKerId)
+      ) {
+        return res.status(403).send({
+          status: false,
+          message: "RS yang dipilih bukan berada di wilayah Anda",
+        });
+      }
+
+      rsList = [
+        {
+          kodeRs: value.rsId,
+          namaRs: rsDetail?.nama ?? "",
+          provinsiId: rsDetail?.provinsi_id ?? null,
+          kabKotaId: rsDetail?.kab_kota_id ?? null,
+          provinsiNama: rsDetail?.provinsiNama ?? "",
+          kabKotaNama: rsDetail?.kabKotaNama ?? "",
+        },
+      ];
+    } else {
+      // ---- Role 1/2/3 tanpa rsId: ambil daftar RS per wilayah, seperti sebelumnya ----
+      const params = {};
+
+      switch (jenisUserId) {
+        case 1:
+          if (value.provId) params.provinsiId = value.provId;
+          if (value.kabId) params.kabKotaId = value.kabId;
+          break;
+
+        case 2:
+          params.provinsiId = req.user.satKerId;
+          if (value.kabId) params.kabKotaId = value.kabId;
+          break;
+
+        case 3:
+          params.kabKotaId = req.user.satKerId;
+          break;
+      }
+
+      const listRs = await ambilSemuaRs(baseUrl, token, params);
+
+      rsList = listRs
+        .filter((rs) => rs.statusAktivasi === 1)
+        .map((rs) => ({
+          kodeRs: rs.kode,
+          namaRs: rs.nama,
+          provinsiId: rs.provinsi_id,
+          kabKotaId: rs.kab_kota_id,
+          provinsiNama: rs.provinsiNama,
+          kabKotaNama: rs.kabKotaNama,
+        }));
+
+      if (rsList.length === 0) {
+        return res.status(404).send({
+          status: false,
+          message: "Tidak ada rumah sakit aktif pada wilayah yang dipilih",
+        });
+      }
     }
 
-    const listRs = await ambilSemuaRs(baseUrl, token, params);
+    // const listRs = await ambilSemuaRs(baseUrl, token, params);
 
-    const rsList = listRs
-      .filter((rs) => rs.statusAktivasi === 1)
-      .map((rs) => ({
-        kodeRs: rs.kode,
-        namaRs: rs.nama,
-        provinsiId: rs.provinsi_id,
-        kabKotaId: rs.kab_kota_id,
-        provinsiNama: rs.provinsiNama,
-        kabKotaNama: rs.kabKotaNama,
-      }));
+    // const rsList = listRs
+    //   .filter((rs) => rs.statusAktivasi === 1)
+    //   .map((rs) => ({
+    //     kodeRs: rs.kode,
+    //     namaRs: rs.nama,
+    //     provinsiId: rs.provinsi_id,
+    //     kabKotaId: rs.kab_kota_id,
+    //     provinsiNama: rs.provinsiNama,
+    //     kabKotaNama: rs.kabKotaNama,
+    //   }));
 
-    if (rsList.length === 0) {
-      return res.status(404).send({
-        status: false,
-        message: "Tidak ada rumah sakit aktif pada wilayah yang dipilih",
-      });
-    }
+    // if (rsList.length === 0) {
+    //   return res.status(404).send({
+    //     status: false,
+    //     message: "Tidak ada rumah sakit aktif pada wilayah yang dipilih",
+    //   });
+    // }
 
     const tahunBulan = req.query.periode.replace("-", "_");
     const pad = (n) => String(n).padStart(2, "0");
@@ -2067,6 +2179,7 @@ export const downloadDataRLLimaTitikSatuSatuSehat = async (req, res) => {
   const schema = joi.object({
     provId: joi.string().allow("", null).optional(),
     kabId: joi.string().allow("", null).optional(),
+    rsId: joi.string().allow("", null).optional(),
     periode: joi.date().format("YYYY-MM").required(),
   });
 
