@@ -75,22 +75,59 @@ export const fetchRL318FromSatuSehat = async (organization_id, year) => {
   return res.data;
 };
 
-export const fetchRL41FromSatuSehat = async (organization_id, periode) => {
-  const res = await axios.get(`${BASE_URL}/rl41`, {
-    headers: { "X-API-Key": API_KEY },
-    params: { bulan_laporan: periode, organization_id },
-    timeout: 60000,
-  });
+// Helper fungsi retry otomatis saat terjadi timeout
+const fetchWithRetry = async (url, config, retries = 3, delay = 3000) => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await axios.get(url, config);
+    } catch (error) {
+      const isTimeout =
+        error.code === "ECONNABORTED" || error.message.includes("timeout");
 
-  return res.data;
+      if (isTimeout && attempt < retries) {
+        console.warn(
+          `[SATUSEHAT] Timeout pada percobaan ke-\({attempt}. Mencoba ulang dalam\){delay / 1000} detik...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay * attempt)); // Jeda meningkat bertahap
+      } else {
+        throw error;
+      }
+    }
+  }
+};
+
+export const fetchRL41FromSatuSehat = async (organization_id, periode) => {
+  try {
+    const res = await fetchWithRetry(`${BASE_URL}/rl41`, {
+      headers: { "X-API-Key": API_KEY },
+      params: { bulan_laporan: periode, organization_id },
+      timeout: 120000, // Naikkan batas ke 120 detik
+    });
+    return res.data;
+  } catch (error) {
+    if (error.code === "ECONNABORTED") {
+      throw new Error(
+        `[RL4.1] Server SATUSEHAT tidak merespons dalam waktu 120 detik.`,
+      );
+    }
+    throw error;
+  }
 };
 
 export const fetchRL51FromSatuSehat = async (organization_id, periode) => {
-  const res = await axios.get(`${BASE_URL}/rl51`, {
-    headers: { "X-API-Key": API_KEY },
-    params: { month: periode, organization_id },
-    timeout: 60000,
-  });
-
-  return res.data;
+  try {
+    const res = await fetchWithRetry(`${BASE_URL}/rl51`, {
+      headers: { "X-API-Key": API_KEY },
+      params: { month: periode, organization_id },
+      timeout: 120000, // Naikkan batas ke 120 detik
+    });
+    return res.data;
+  } catch (error) {
+    if (error.code === "ECONNABORTED") {
+      throw new Error(
+        `[RL5.1] Server SATUSEHAT tidak merespons dalam waktu 120 detik.`,
+      );
+    }
+    throw error;
+  }
 };
