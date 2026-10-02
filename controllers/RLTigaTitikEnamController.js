@@ -297,7 +297,8 @@ export const getDataRLTigaTitikEnamSatuSehat = async (req, res) => {
             headers: {
                 'Content-Type': 'application/json',
                 'X-API-Key': apiKey
-            }
+            },
+            timeout: 90000
         })
 
         const raw = response?.data
@@ -318,6 +319,18 @@ export const getDataRLTigaTitikEnamSatuSehat = async (req, res) => {
         }
 
         const bulan_laporan = `${periode}-01`
+        const existingRows = await RLTigaTitikEnamSatusehat.findAll({
+            where: {
+                bulan_laporan,
+                organization_id,
+            },
+            attributes: ['bulan_laporan', 'organization_id', 'jenis_kegiatan', 'nama_kegiatan', 'id']
+        })
+
+        const existingMap = new Map(
+            existingRows.map((row) => [`${row.jenis_kegiatan}::${row.nama_kegiatan}`, row])
+        )
+
         let insertedCount = 0
         let updatedCount = 0
         let skippedCount = 0
@@ -359,20 +372,15 @@ export const getDataRLTigaTitikEnamSatuSehat = async (req, res) => {
                     mati: Number(detailItem?.mati ?? 0)
                 }
 
-                const existing = await RLTigaTitikEnamSatusehat.findOne({
-                    where: {
-                        bulan_laporan: payload.bulan_laporan,
-                        organization_id: payload.organization_id,
-                        jenis_kegiatan: payload.jenis_kegiatan,
-                        nama_kegiatan: payload.nama_kegiatan
-                    }
-                })
+                const key = `${payload.jenis_kegiatan}::${payload.nama_kegiatan}`
+                const existing = existingMap.get(key)
 
                 if (existing) {
                     await existing.update(payload)
                     updatedCount += 1
                 } else {
-                    await RLTigaTitikEnamSatusehat.create(payload)
+                    const created = await RLTigaTitikEnamSatusehat.create(payload)
+                    existingMap.set(key, created)
                     insertedCount += 1
                 }
             }
