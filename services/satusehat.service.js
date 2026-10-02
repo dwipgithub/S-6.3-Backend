@@ -4,6 +4,7 @@ import axios from "axios";
 const BASE_URL = process.env.SATUSEHAT_BASE_URL;
 const API_KEY = process.env.SATUSEHAT_API_KEY;
 
+
 export const fetchRL38FromSatuSehat = async (organization_id, periode) => {
   const res = await axios.get(`${BASE_URL}/rl38`, {
     headers: { "X-API-Key": API_KEY },
