@@ -105,22 +105,12 @@ export const doSyncRL51 = async (organization_id, periode) => {
       return { success: true, total: 0 };
     }
 
-    // ── Simpan ke DB ──
-    // const totalSaved = await saveRecordsRL51(
-    //   records,
-    //   organization_id,
-    //   `${periode}-01`,
-    // );
-
     await logEntry.update({
       status: "success",
       total_data: totalSaved,
       synced_at: new Date(),
     });
 
-    // console.log(
-    //   `[RL51 Sync] ✅ org=${organization_id} periode=${periode} total=${totalSaved}`,
-    // );
     return { success: true, total: totalSaved };
   } catch (err) {
     const errStatus = err.response?.status || err.status;
