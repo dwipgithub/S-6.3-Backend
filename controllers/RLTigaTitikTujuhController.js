@@ -383,7 +383,8 @@ export const getDataRLTigaTitikTujuhSatuSehat = async (req, res) => {
             headers: {
                 'Content-Type': 'application/json',
                 'X-API-Key': apiKey
-            }
+            },
+            timeout: 90000
         })
 
         const raw = response?.data
@@ -424,6 +425,20 @@ export const getDataRLTigaTitikTujuhSatuSehat = async (req, res) => {
         // =========================================
         // SIMPAN / UPDATE DATABASE
         // =========================================
+        const existingRows = await RLTigaTitikTujuhSatusehat.findAll({
+            where: {
+                bulan_laporan: {
+                    [Op.like]: `${periode}%`
+                },
+                organization_id: organization_id
+            },
+            attributes: ['bulan_laporan', 'organization_id', 'nama_kegiatan', 'id']
+        })
+
+        const existingMap = new Map(
+            existingRows.map((row) => [`${row.bulan_laporan}::${row.organization_id}::${row.nama_kegiatan}`, row])
+        )
+
         let insertedCount = 0
         let updatedCount = 0
         let skippedCount = 0
@@ -473,20 +488,15 @@ export const getDataRLTigaTitikTujuhSatuSehat = async (req, res) => {
                 dirujuk: Number(item?.dirujuk ?? 0)
             }
 
-            const existing =
-                await RLTigaTitikTujuhSatusehat.findOne({
-                    where: {
-                        bulan_laporan: payload.bulan_laporan,
-                        organization_id: payload.organization_id,
-                        nama_kegiatan: payload.nama_kegiatan
-                    }
-                })
+            const key = `${payload.bulan_laporan}::${payload.organization_id}::${payload.nama_kegiatan}`
+            const existing = existingMap.get(key)
 
             if (existing) {
                 await existing.update(payload)
                 updatedCount += 1
             } else {
-                await RLTigaTitikTujuhSatusehat.create(payload)
+                const created = await RLTigaTitikTujuhSatusehat.create(payload)
+                existingMap.set(key, created)
                 insertedCount += 1
             }
         }
