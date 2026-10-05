@@ -835,6 +835,7 @@ export const getDataRLTigaTitikTigaSatuSehat = async (req, res) => {
         "Content-Type": "application/json",
         "X-API-Key": apiKey,
       },
+      timeout: 90000,
     });
 
     const raw = response?.data;
@@ -855,6 +856,18 @@ export const getDataRLTigaTitikTigaSatuSehat = async (req, res) => {
         data: [],
       });
     }
+
+    const existingRows = await RLTigaTitikTigaSatusehat.findAll({
+      where: {
+        month_year: monthYear,
+        ihs_organization: organizationIdFinal,
+      },
+      attributes: ["kategori", "jenis_pelayanan", "id"],
+    });
+
+    const existingMap = new Map(
+      existingRows.map((row) => [`${row.kategori}::${row.jenis_pelayanan}`, row])
+    );
 
     let insertedCount = 0;
     let updatedCount = 0;
@@ -885,20 +898,15 @@ export const getDataRLTigaTitikTigaSatuSehat = async (req, res) => {
         continue;
       }
 
-      const existing = await RLTigaTitikTigaSatusehat.findOne({
-        where: {
-          month_year: payload.month_year,
-          ihs_organization: payload.ihs_organization,
-          kategori: payload.kategori,
-          jenis_pelayanan: payload.jenis_pelayanan,
-        },
-      });
+      const key = `${payload.kategori}::${payload.jenis_pelayanan}`;
+      const existing = existingMap.get(key);
 
       if (existing) {
         await existing.update(payload);
         updatedCount += 1;
       } else {
-        await RLTigaTitikTigaSatusehat.create(payload);
+        const created = await RLTigaTitikTigaSatusehat.create(payload);
+        existingMap.set(key, created);
         insertedCount += 1;
       }
     }
