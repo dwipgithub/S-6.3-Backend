@@ -41,6 +41,16 @@ export const getLastSyncInfo = async (orgId, periode, tipe_rl = "rl_4_1") => {
   });
 };
 
+const chunkArray = (array, size) => {
+  const result = [];
+  for (let i = 0; i < array.length; i += size) {
+    result.push(array.slice(i, i + size));
+  }
+  return result;
+};
+
+const CHUNK_SIZE_RL41 = 300; // sesuaikan berdasarkan hasil tes; mulai dari 300
+
 export const doSync = async (organization_id, periode) => {
   const logEntry = await syncLog.create({
     orgId: organization_id,
@@ -54,7 +64,7 @@ export const doSync = async (organization_id, periode) => {
 
     if (!rawData || rawData.status === 404 || rawData.data === null) {
       await logEntry.update({
-        status: "success", // tetap success, bukan failed
+        status: "success",
         total_data: 0,
         synced_at: new Date(),
         error_msg: rawData?.message ?? "data not found",
@@ -74,9 +84,25 @@ export const doSync = async (organization_id, periode) => {
     }
 
     const mapped = dataArray.map(transformItem);
-    await rlEmpatTitikSatuSatuSehat.bulkCreate(mapped, {
-      updateOnDuplicate: Object.keys(mapped[0]).filter((k) => k !== "id"),
-    });
+
+    // ---- Chunking: pecah jadi batch kecil sebelum bulkCreate ----
+    const chunks = chunkArray(mapped, CHUNK_SIZE_RL41);
+    console.log(
+      `[RL41 Sync] org=${organization_id} periode=${periode}: total ${mapped.length} baris, diproses dalam ${chunks.length} batch @${CHUNK_SIZE_RL41}`,
+    );
+
+    const updateFields = Object.keys(mapped[0]).filter((k) => k !== "id");
+
+    for (let i = 0; i < chunks.length; i++) {
+      const tBatchStart = Date.now();
+      await rlEmpatTitikSatuSatuSehat.bulkCreate(chunks[i], {
+        updateOnDuplicate: updateFields,
+      });
+      const tBatchEnd = Date.now();
+      console.log(
+        `[RL41 Sync] Batch ${i + 1}/${chunks.length} (${chunks[i].length} baris) selesai dalam ${tBatchEnd - tBatchStart}ms`,
+      );
+    }
 
     await logEntry.update({
       status: "success",
@@ -88,10 +114,9 @@ export const doSync = async (organization_id, periode) => {
     const errStatus = err.response?.status || err.status;
     const errData = err.response?.data;
 
-    // Jika terdeteksi 404 dari response SatuSehat, handle sebagai "success" dengan 0 data
     if (errStatus === 404 || errData?.status === 404) {
       await logEntry.update({
-        status: "success", // Tetap dianggap sukses karena hanya data kosong/tidak ada
+        status: "success",
         total_data: 0,
         synced_at: new Date(),
         error_msg: errData?.message ?? "data not found",
@@ -99,7 +124,6 @@ export const doSync = async (organization_id, periode) => {
       return { success: true, total: 0 };
     }
 
-    // Jika benar-benar error sistem (misal: network timeout, DB error, dll) baru set failed
     await logEntry.update({ status: "failed", error_msg: err.message });
     throw err;
   }
@@ -221,7 +245,7 @@ export const doSync39 = async (organization_id, periode) => {
     const bulan = rawData.data.bulan;
 
     const mapped = dataArray.map((item) =>
-      transformItem39(item, orgId, tahun, bulan)
+      transformItem39(item, orgId, tahun, bulan),
     );
 
     // 1. Hapus data lama berdasarkan organization_id, bulan, dan tahun
