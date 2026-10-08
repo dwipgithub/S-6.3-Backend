@@ -1229,11 +1229,96 @@ export const downloadDataRLEmpatTitikSatuSatuSehat = async (req, res) => {
         {
           kodeRs: kodeRsSendiri,
           namaRs: rsDetail?.nama ?? "",
+          provinsiNama: rsDetail?.provinsiNama ?? "",
+          kabKotaNama: rsDetail?.kabKotaNama ?? "",
         },
       ];
 
       orgToRsMap.set(orgIdShort, rsList[0]);
       orgIdList = [orgIdShort];
+    } else if (value.rsId) {
+      // ---- Role 1/2/3 memilih RS spesifik: ambil detail 1 RS itu saja ----
+      const rsDetailResponse = await axios.get(
+        `${baseUrl}/faskes/rumahsakit/${value.rsId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      const rsDetail = rsDetailResponse.data.data ?? rsDetailResponse.data;
+
+      if (!rsDetail) {
+        return res.status(404).send({
+          status: false,
+          message: "Rumah sakit tidak ditemukan",
+        });
+      }
+
+      // Validasi kepemilikan wilayah: RS yang dipilih harus berada
+      // di provinsi/kabkota yang memang jadi scope user ini.
+      if (
+        jenisUserId === 2 &&
+        String(rsDetail.provinsiId) !== String(req.user.satKerId)
+      ) {
+        return res.status(403).send({
+          status: false,
+          message: "RS yang dipilih bukan berada di wilayah Anda",
+        });
+      }
+      if (
+        jenisUserId === 3 &&
+        String(rsDetail.kabKotaId) !== String(req.user.satKerId)
+      ) {
+        return res.status(403).send({
+          status: false,
+          message: "RS yang dipilih bukan berada di wilayah Anda",
+        });
+      }
+
+      rsList = [
+        {
+          kodeRs: value.rsId,
+          namaRs: rsDetail?.nama ?? "",
+          provinsiId: rsDetail?.provinsiId ?? null,
+          kabKotaId: rsDetail?.kabKotaId ?? null,
+          provinsiNama: rsDetail?.provinsiNama ?? "",
+          kabKotaNama: rsDetail?.kabKotaNama ?? "",
+        },
+      ];
+
+      const kodeRsList = rsList.map((rs) => rs.kodeRs);
+
+      const satuSehatMappings = await satu_sehat_id.findAll({
+        where: {
+          kode_baru_faskes: { [Op.in]: kodeRsList },
+        },
+        attributes: ["kode_baru_faskes", "organization_id"],
+      });
+
+      if (satuSehatMappings.length === 0) {
+        return res.status(404).send({
+          status: false,
+          message:
+            "Tidak ada mapping OrganizationId untuk wilayah yang dipilih",
+        });
+      }
+
+      satuSehatMappings.forEach((mapping) => {
+        const orgIdShort = mapping.organization_id?.substring(0, 9);
+        const rsInfo = rsList.find(
+          (rs) => String(rs.kodeRs) === String(mapping.kode_baru_faskes),
+        );
+        if (orgIdShort && rsInfo) {
+          orgToRsMap.set(orgIdShort, rsInfo);
+        }
+      });
+
+      orgIdList = Array.from(orgToRsMap.keys());
+
+      if (orgIdList.length === 0) {
+        return res.status(404).send({
+          status: false,
+          message: "Tidak ada data SatuSehat untuk wilayah yang dipilih",
+        });
+      }
     } else {
       // ---- Role 1/2/3: ambil daftar RS per wilayah, seperti sebelumnya ----
       const params = {};
@@ -1469,16 +1554,18 @@ const tulisExcelRL41SatuSehat = async ({
     { header: "No", group: null, key: "no", width: 5 },
     { header: "Kode RS", group: null, key: "kodeRs", width: 12 },
     { header: "Nama RS", group: null, key: "namaRs", width: 35 },
-    ...(tampilkanOrgId
-      ? [
-          {
-            header: "Organization ID",
-            group: null,
-            key: "organizationId",
-            width: 20,
-          },
-        ]
-      : []),
+    { header: "Provinsi", group: null, key: "provinsi", width: 35 },
+    { header: "Kab/Kota", group: null, key: "kabKota", width: 35 },
+    // ...(tampilkanOrgId
+    //   ? [
+    //       {
+    //         header: "Organization ID",
+    //         group: null,
+    //         key: "organizationId",
+    //         width: 20,
+    //       },
+    //     ]
+    //   : []),
     { header: "Kode ICD", group: null, key: "kodeIcd", width: 12 },
     { header: "Diagnosis", group: null, key: "diagnosis", width: 40 },
     { header: "Bulan Laporan", group: null, key: "bulanLaporan", width: 14 },
@@ -1600,7 +1687,9 @@ const tulisExcelRL41SatuSehat = async ({
         no: no++,
         kodeRs: rsInfo?.kodeRs ?? "",
         namaRs: rsInfo?.namaRs ?? "",
-        ...(tampilkanOrgId ? { organizationId: data.organization_id } : {}),
+        provinsi: rsInfo?.provinsiNama ?? "",
+        kabKota: rsInfo?.kabKotaNama ?? "",
+        // ...(tampilkanOrgId ? { organizationId: data.organization_id } : {}),
         kodeIcd: data.kode_icd ?? "",
         diagnosis: data.diagnosis ?? "",
         bulanLaporan: data.bulan_laporan ?? "",
@@ -1792,8 +1881,8 @@ export const downloadDataRLEmpatTitikSatu = async (req, res) => {
         {
           kodeRs: kodeRsSendiri,
           namaRs: rsDetail?.nama ?? "",
-          provinsiId: rsDetail?.provinsi_id ?? null,
-          kabKotaId: rsDetail?.kab_kota_id ?? null,
+          provinsiId: rsDetail?.provinsiId ?? null,
+          kabKotaId: rsDetail?.kabKotaId ?? null,
           provinsiNama: rsDetail?.provinsiNama ?? "",
           kabKotaNama: rsDetail?.kabKotaNama ?? "",
         },
@@ -1818,7 +1907,7 @@ export const downloadDataRLEmpatTitikSatu = async (req, res) => {
       // di provinsi/kabkota yang memang jadi scope user ini.
       if (
         jenisUserId === 2 &&
-        String(rsDetail.provinsi_id) !== String(req.user.satKerId)
+        String(rsDetail.provinsiId) !== String(req.user.satKerId)
       ) {
         return res.status(403).send({
           status: false,
@@ -1827,7 +1916,7 @@ export const downloadDataRLEmpatTitikSatu = async (req, res) => {
       }
       if (
         jenisUserId === 3 &&
-        String(rsDetail.kab_kota_id) !== String(req.user.satKerId)
+        String(rsDetail.kabKotaId) !== String(req.user.satKerId)
       ) {
         return res.status(403).send({
           status: false,
@@ -1839,8 +1928,8 @@ export const downloadDataRLEmpatTitikSatu = async (req, res) => {
         {
           kodeRs: value.rsId,
           namaRs: rsDetail?.nama ?? "",
-          provinsiId: rsDetail?.provinsi_id ?? null,
-          kabKotaId: rsDetail?.kab_kota_id ?? null,
+          provinsiId: rsDetail?.provinsiId ?? null,
+          kabKotaId: rsDetail?.kabKotaId ?? null,
           provinsiNama: rsDetail?.provinsiNama ?? "",
           kabKotaNama: rsDetail?.kabKotaNama ?? "",
         },
@@ -1872,8 +1961,8 @@ export const downloadDataRLEmpatTitikSatu = async (req, res) => {
         .map((rs) => ({
           kodeRs: rs.kode,
           namaRs: rs.nama,
-          provinsiId: rs.provinsi_id,
-          kabKotaId: rs.kab_kota_id,
+          provinsiId: rs.provinsiId,
+          kabKotaId: rs.kabKotaId,
           provinsiNama: rs.provinsiNama,
           kabKotaNama: rs.kabKotaNama,
         }));
