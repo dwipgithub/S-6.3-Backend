@@ -991,8 +991,6 @@ export const tulisExcelRL319SatuSehat = async ({
   sheet.mergeCells(2, 1, 2, 2);
   rPeriodeLabel.commit();
 
-  sheet.addRow(["Tahun :", periode]).commit();
-  sheet.addRow([]).commit();
   const rTahun = sheet.addRow(["Tahun :", periode]);
   rTahun.getCell(1).font = { bold: true }; // Hanya sel label "Tahun :" yang bold
   rTahun.getCell(2).font = { bold: false }; // Memastikan nilai tahunStr tidak bold
