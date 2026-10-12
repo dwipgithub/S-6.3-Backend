@@ -35,6 +35,7 @@ import {
   getDataRLTigaTitikTigaById,
   getDataRLTigaTitikTigaSatuSehat,
   getDataRLTigaTitikTigaSatusehatLocal,
+  downloadRLTigaTitikTigaSatusehatExcel,
 } from "../controllers/RLTigaTitikTigaController.js";
 
 // RL 3.4
@@ -46,6 +47,7 @@ import {
   deleteDataRLTigaTitikEmpat,
   getDataRLTigaTitikEmpatSatuSehat,
   getDataRLTigaTitikEmpatSatusehatLocal,
+  downloadRLTigaTitikEmpatSatusehatExcel,
 } from "../controllers/RLTigaTitikEmpatController.js";
 
 // RL 3.5
@@ -57,6 +59,7 @@ import {
   deleteDataRLTigaTitikLima,
   getDataRLTigaTitikLimaSatuSehat,
   getDataRLTigaTitikLimaSatusehatLocal,
+  downloadRLTigaTitikLimaSatusehatExcel,
 } from "../controllers/RLTigaTitikLimaController.js";
 
 // RL 3.6
@@ -68,6 +71,7 @@ import {
   deleteDataRLTigaTitikEnam,
   getDataRLTigaTitikEnamSatuSehat,
   getDataRLTigaTitikEnamSatusehatLocal,
+  downloadRLTigaTitikEnamSatusehatExcel,
 } from "../controllers/RLTigaTitikEnamController.js";
 
 // RL 3.7
@@ -79,6 +83,7 @@ import {
   deleteDataRLTigaTitikTujuh,
   getDataRLTigaTitikTujuhSatuSehat,
   getDataRLTigaTitikTujuhSatusehatLocal,
+  downloadRLTigaTitikTujuhSatusehatExcel,
 } from "../controllers/RLTigaTitikTujuhController.js";
 
 //Jenis Spesialisasi 3.10
@@ -164,6 +169,7 @@ import {
   updateRLTigaTitikDua,
   getDataRLTigaTitikDuaSatuSehat,
   getDataRLTigaTitikDuaSatusehatLocal,
+  downloadRLTigaTitikDuaSatusehatExcel,
 } from "../controllers/RLTigaTitikDuaController.js";
 
 // RL 3.2 Validasi
@@ -603,6 +609,13 @@ router.get(
   verifyToken,
   getDataRLTigaTitikDuaSatusehatLocal,
 );
+router.post(
+  "/apisirs6v2/rltigatitikduasatusehat/excel",
+  verifyCsrfToken,
+  verifyToken,
+  verifyHmac,
+  downloadRLTigaTitikDuaSatusehatExcel,
+);
 router.patch(
   "/apisirs6v2/rltigatitikdua/:id",
   verifyCsrfToken,
@@ -1013,6 +1026,13 @@ router.get(
   verifyToken,
   getDataRLTigaTitikTigaSatusehatLocal,
 );
+router.post(
+  "/apisirs6v2/rltigatitiktiga/satusehat/excel",
+  verifyCsrfToken,
+  verifyToken,
+  verifyHmac,
+  downloadRLTigaTitikTigaSatusehatExcel,
+);
 router.delete(
   "/apisirs6v2/rltigatitiktiga/:id",
   verifyCsrfToken,
@@ -1105,6 +1125,13 @@ router.get(
   verifyToken,
   getDataRLTigaTitikEmpatSatusehatLocal,
 );
+router.post(
+  "/apisirs6v2/rltigatitikempat/satusehat/excel",
+  verifyCsrfToken,
+  verifyToken,
+  verifyHmac,
+  downloadRLTigaTitikEmpatSatusehatExcel,
+);
 
 // Jenis Kegiatan
 router.get(
@@ -1161,6 +1188,13 @@ router.get(
   verifyToken,
   getDataRLTigaTitikLimaSatusehatLocal,
 );
+router.post(
+  "/apisirs6v2/rltigatitiklima/satusehat/excel",
+  verifyCsrfToken,
+  verifyToken,
+  verifyHmac,
+  downloadRLTigaTitikLimaSatusehatExcel,
+);
 
 // Jenis Kegiatan
 router.get(
@@ -1213,6 +1247,13 @@ router.get(
   verifyToken,
   getDataRLTigaTitikEnamSatusehatLocal,
 );
+router.post(
+  "/apisirs6v2/rltigatitikenam/satusehat/excel",
+  verifyCsrfToken,
+  verifyToken,
+  verifyHmac,
+  downloadRLTigaTitikEnamSatusehatExcel,
+);
 
 // Jenis Kegiatan
 router.get(
@@ -1264,6 +1305,13 @@ router.get(
   "/apisirs6v2/getDataRLTigaTitikTujuhSatusehatLocal",
   verifyToken,
   getDataRLTigaTitikTujuhSatusehatLocal,
+);
+router.post(
+  "/apisirs6v2/rltigatitiktujuh/satusehat/excel",
+  verifyCsrfToken,
+  verifyToken,
+  verifyHmac,
+  downloadRLTigaTitikTujuhSatusehatExcel,
 );
 
 //Jenis Pemeriksaan RL3.8
