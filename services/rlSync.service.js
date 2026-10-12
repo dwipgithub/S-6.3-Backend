@@ -3,7 +3,11 @@ import { syncLog } from "../models/SyncLogModel.js";
 import { rlEmpatTitikSatuSatuSehat } from "../models/RLEmpatTitikSatuSatuSehatModel.js";
 import { rlTigaTitikSembilanSatuSehat } from "../models/RLTigaTitikSembilanSatuSehatModel.js";
 import { rlTigaTitikDelapanSatuSehat } from "../models/RLTigaTitikDelapanSatuSehatModel.js";
-import { fetchRL41FromSatuSehat, fetchRL39FromSatuSehat, fetchRL38FromSatuSehat } from "./satusehat.service.js";
+import {
+  fetchRL41FromSatuSehat,
+  fetchRL39FromSatuSehat,
+  fetchRL38FromSatuSehat,
+} from "./satusehat.service.js";
 import { Op } from "sequelize"; // ← tambahkan ini
 
 const STALE_MINUTES = parseInt(process.env.SYNC_STALE_MINUTES) || 1440;
@@ -87,9 +91,9 @@ export const doSync = async (organization_id, periode) => {
 
     // ---- Chunking: pecah jadi batch kecil sebelum bulkCreate ----
     const chunks = chunkArray(mapped, CHUNK_SIZE_RL41);
-    console.log(
-      `[RL41 Sync] org=${organization_id} periode=${periode}: total ${mapped.length} baris, diproses dalam ${chunks.length} batch @${CHUNK_SIZE_RL41}`,
-    );
+    // console.log(
+    //   `[RL41 Sync] org=${organization_id} periode=${periode}: total ${mapped.length} baris, diproses dalam ${chunks.length} batch @${CHUNK_SIZE_RL41}`,
+    // );
 
     const updateFields = Object.keys(mapped[0]).filter((k) => k !== "id");
 
@@ -99,9 +103,6 @@ export const doSync = async (organization_id, periode) => {
         updateOnDuplicate: updateFields,
       });
       const tBatchEnd = Date.now();
-      console.log(
-        `[RL41 Sync] Batch ${i + 1}/${chunks.length} (${chunks[i].length} baris) selesai dalam ${tBatchEnd - tBatchStart}ms`,
-      );
     }
 
     await logEntry.update({
@@ -308,7 +309,6 @@ export const isSyncing39 = async (orgId, periode, tipe_rl = "rl_3_9") => {
 };
 //END RL 3.9
 
-
 //RL 3.8
 const transformItem38 = (item, group, orgId, tahun, bulan) => {
   return {
@@ -321,8 +321,8 @@ const transformItem38 = (item, group, orgId, tahun, bulan) => {
     pemeriksaan: item.pemeriksaan,
     jumlah_laki_laki: parseInt(item.jumlah_pemeriksaan?.laki_laki) || 0,
     jumlah_perempuan: parseInt(item.jumlah_pemeriksaan?.perempuan) || 0,
-    rata_rata_laki_laki: parseFloat(item.nilai_rata_rata?.laki_laki) || 0.00,
-    rata_rata_perempuan: parseFloat(item.nilai_rata_rata?.perempuan) || 0.00,
+    rata_rata_laki_laki: parseFloat(item.nilai_rata_rata?.laki_laki) || 0.0,
+    rata_rata_perempuan: parseFloat(item.nilai_rata_rata?.perempuan) || 0.0,
   };
 };
 
@@ -370,9 +370,9 @@ export const doSync38 = async (organization_id, periode) => {
     const mapped = groupArray.flatMap((group) =>
       Array.isArray(group.pemeriksaan)
         ? group.pemeriksaan.map((item) =>
-            transformItem38(item, group, orgId, tahun, bulan)
+            transformItem38(item, group, orgId, tahun, bulan),
           )
-        : []
+        : [],
     );
 
     // Hapus data lama berdasarkan organization_id, bulan, dan tahun

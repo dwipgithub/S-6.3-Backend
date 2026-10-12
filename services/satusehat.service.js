@@ -4,7 +4,6 @@ import axios from "axios";
 const BASE_URL = process.env.SATUSEHAT_BASE_URL;
 const API_KEY = process.env.SATUSEHAT_API_KEY;
 
-
 export const fetchRL38FromSatuSehat = async (organization_id, periode) => {
   const res = await axios.get(`${BASE_URL}/rl38`, {
     headers: { "X-API-Key": API_KEY },
@@ -126,6 +125,24 @@ export const fetchRL51FromSatuSehat = async (organization_id, periode) => {
     if (error.code === "ECONNABORTED") {
       throw new Error(
         `[RL5.1] Server SATUSEHAT tidak merespons dalam waktu 120 detik.`,
+      );
+    }
+    throw error;
+  }
+};
+
+export const fetchRL319FromSatuSehat = async (organization_id, periode) => {
+  try {
+    const res = await fetchWithRetry(`${BASE_URL}/rl319`, {
+      headers: { "X-API-Key": API_KEY },
+      params: { year: periode, organization_id },
+      timeout: 120000, // Naikkan batas ke 120 detik
+    });
+    return res.data;
+  } catch (error) {
+    if (error.code === "ECONNABORTED") {
+      throw new Error(
+        `[RL3.19] Server SATUSEHAT tidak merespons dalam waktu 120 detik.`,
       );
     }
     throw error;

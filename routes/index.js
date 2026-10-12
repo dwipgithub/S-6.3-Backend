@@ -332,6 +332,9 @@ import {
   deleteDataRLTigaTitikSembilanBelas,
   getDataRLTigaTitikSembilanBelasDetails,
   getDataRLTigaTitikSembilanBelasById,
+  manualSyncRL319,
+  getDataRLTigaTitikSembilanBelasWithSatuSehat,
+  downloadDataRLTigaTitikSembilanBelasSatuSehat,
 } from "../controllers/RLTigaTitikSembilanBelasController.js";
 
 // RL 3.8
@@ -1918,18 +1921,39 @@ router.patch(
 // router.get(
 //   "/apisirs6v2/rltigatitiksembilanbelasvalidasi",
 //   verifyToken,
-//   getDataRLTigaTitikSembilanBelasValidasi
+//   getDataRLTigaTitikSembilanBelasValidasi,
 // );
 // router.post(
 //   "/apisirs6v2/rltigatitiksembilanbelasvalidasi",
 //   verifyToken,
-//   insertDataRLTigaTitikSembilanBelasValidasi
+//   insertDataRLTigaTitikSembilanBelasValidasi,
 // );
 // router.patch(
 //   "/apisirs6v2/rltigatitiksembilanbelasvalidasi/:id",
 //   verifyToken,
-//   updateDataRLTigaTitikSembilanBelasValidasi
+//   updateDataRLTigaTitikSembilanBelasValidasi,
 // );
+
+// GET SATUSEHAT
+router.post(
+  "/apisirs6v2/rltigatitiksembilanbelassatusatusehat/sync",
+  verifyCsrfToken,
+  verifyHmac,
+  verifyToken,
+  manualSyncRL319,
+);
+
+router.get(
+  "/apisirs6v2/rltigatitiksembilanbelassatusehat",
+  verifyToken,
+  getDataRLTigaTitikSembilanBelasWithSatuSehat,
+);
+
+router.get(
+  "/apisirs6v2/rltigatitiksembilanbelassatusehatdownload",
+  verifyToken,
+  downloadDataRLTigaTitikSembilanBelasSatuSehat,
+);
 
 // RL 4.1
 router.post(
