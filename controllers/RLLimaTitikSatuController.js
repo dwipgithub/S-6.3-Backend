@@ -1873,7 +1873,7 @@ export const downloadDataRLLimaTitikSatu = async (req, res) => {
       res,
       rsList,
       periode: req.query.periode,
-      judul: "SIRS ONLINE RL 5.1",
+      judul: "RL 5.1 Morbiditas Pasien Rawat Jalan",
       modelDetail: rlLimaTitikSatuDetail,
     });
   } catch (err) {
@@ -1996,7 +1996,7 @@ const tulisExcelRL51 = async ({
   res,
   rsList,
   periode,
-  judul = "SIRS ONLINE RL 5.1",
+  judul = "RL 5.1 Morbiditas Pasien Rawat Jalan",
   modelDetail,
 }) => {
   const kodeRsList = rsList.map((rs) => rs.kodeRs);
@@ -2018,7 +2018,7 @@ const tulisExcelRL51 = async ({
 
   // ---- Blok judul ----
   const rJudul = sheet.addRow([judul]);
-  rJudul.font = { bold: true, size: 14 };
+  rJudul.font = { bold: true, size: 16 };
   sheet.mergeCells(1, 1, 1, 4);
   rJudul.commit();
 
@@ -2028,9 +2028,13 @@ const tulisExcelRL51 = async ({
   rPeriodeLabel.commit();
 
   const rBulan = sheet.addRow(["Bulan :", namaBulan]);
+  rBulan.getCell(1).font = { bold: true }; // Hanya sel label "Bulan :" yang bold
+  rBulan.getCell(2).font = { bold: false }; // Memastikan nilai namaBulan tidak bold
   rBulan.commit();
 
   const rTahun = sheet.addRow(["Tahun :", tahunStr]);
+  rTahun.getCell(1).font = { bold: true }; // Hanya sel label "Tahun :" yang bold
+  rTahun.getCell(2).font = { bold: false }; // Memastikan nilai tahunStr tidak bold
   rTahun.commit();
 
   sheet.addRow([]).commit();
@@ -2409,7 +2413,7 @@ export const downloadDataRLLimaTitikSatuSatuSehat = async (req, res) => {
       orgToRsMap,
       orgIdList,
       periode: req.query.periode,
-      judul: "SIRS ONLINE RL 5.1 - SATU SEHAT",
+      judul: "RL 5.1 Morbiditas Pasien Rawat Jalan - SATU SEHAT",
       modelDetail: rlLimaTitikSatuSatuSehat,
       tampilkanOrgId: jenisUserId === 4,
     });
@@ -2520,7 +2524,7 @@ const tulisExcelRL51SatuSehat = async ({
   orgToRsMap,
   orgIdList,
   periode,
-  judul = "SIRS ONLINE RL 5.1 - SATU SEHAT",
+  judul = "RL 5.1 Morbiditas Pasien Rawat Jalan - SATU SEHAT",
   modelDetail,
   tampilkanOrgId = false,
 }) => {
@@ -2567,7 +2571,7 @@ const tulisExcelRL51SatuSehat = async ({
 
   // ---- Blok judul ----
   const rJudul = sheet.addRow([judul]);
-  rJudul.font = { bold: true, size: 14 };
+  rJudul.font = { bold: true, size: 16 };
   sheet.mergeCells(1, 1, 1, 4);
   rJudul.commit();
 
@@ -2577,9 +2581,13 @@ const tulisExcelRL51SatuSehat = async ({
   rPeriodeLabel.commit();
 
   const rBulan = sheet.addRow(["Bulan :", namaBulan]);
+  rBulan.getCell(1).font = { bold: true }; // Hanya sel label "Bulan :" yang bold
+  rBulan.getCell(2).font = { bold: false }; // Memastikan nilai namaBulan tidak bold
   rBulan.commit();
 
   const rTahun = sheet.addRow(["Tahun :", tahunStr]);
+  rTahun.getCell(1).font = { bold: true }; // Hanya sel label "Tahun :" yang bold
+  rTahun.getCell(2).font = { bold: false }; // Memastikan nilai tahunStr tidak bold
   rTahun.commit();
 
   sheet.addRow([]).commit();
