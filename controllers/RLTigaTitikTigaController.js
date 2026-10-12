@@ -9,6 +9,7 @@ import {
 import { jenisPelayananTigaTitikTiga } from "../models/JenisPelayananTigaTitikTiga.js";
 import axios from "axios";
 import { satu_sehat_id } from "../models/UserModel.js";
+import ExcelJS from "exceljs";
 
 //new
 
@@ -990,6 +991,185 @@ export const getDataRLTigaTitikTigaSatusehatLocal = async (req, res) => {
     return res.status(500).json({
       status: false,
       message: "Gagal mengambil data RL 3.3 Satusehat lokal",
+      detail: err.message,
+    });
+  }
+};
+
+export const downloadRLTigaTitikTigaSatusehatExcel = async (req, res) => {
+  const schema = Joi.object({
+    rsId: Joi.string().trim().required(),
+    periode: Joi.string().pattern(/^\d{4}-(0[1-9]|1[0-2])$/).required(),
+    kodeRS: Joi.alternatives()
+      .try(Joi.string().max(255), Joi.number().integer().min(0))
+      .required(),
+    namaRS: Joi.string().max(255).required(),
+    provinsi: Joi.string().max(255).required(),
+    kabupatenKota: Joi.string().max(255).required(),
+  });
+  const { error, value } = schema.validate(req.body);
+
+  if (error) {
+    return res.status(400).json({
+      status: false,
+      message: error.details[0].message,
+    });
+  }
+
+  try {
+    const satuSehat = await satu_sehat_id.findOne({
+      where: { kode_baru_faskes: value.rsId },
+      attributes: ["organization_id"],
+    });
+
+    if (!satuSehat) {
+      return res.status(404).json({
+        status: false,
+        message: "OrganizationId Tidak Ada",
+      });
+    }
+
+    const organizationId = satuSehat.organization_id?.substring(0, 9);
+    if (!organizationId) {
+      return res.status(404).json({
+        status: false,
+        message: "OrganizationId Tidak Ada",
+      });
+    }
+
+    const data = await RLTigaTitikTigaSatusehat.findAll({
+      where: {
+        month_year: value.periode,
+        ihs_organization: organizationId,
+      },
+      order: [["kategori", "ASC"], ["jenis_pelayanan", "ASC"]],
+    });
+
+    const namaBulan = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+    ][Number(value.periode.slice(5, 7)) - 1];
+    const tahunData = value.periode.slice(0, 4);
+    const headers = [
+      "No",
+      "Kode RS",
+      "Rumah Sakit",
+      "Provinsi",
+      "Kabupaten/Kota",
+      "Kategori",
+      "Jenis Pelayanan",
+      "Total Pasien Rujukan",
+      "Total Pasien Non Rujukan",
+      "Tindak Lanjut Dirawat",
+      "Tindak Lanjut Dirujuk",
+      "Tindak Lanjut Pulang",
+      "Mati di IGD (L)",
+      "Mati di IGD (P)",
+      "DOA (L)",
+      "DOA (P)",
+      "Luka-luka (L)",
+      "Luka-luka (P)",
+      "False Emergency",
+    ];
+    const tableRows = data.map((record, index) => {
+      const row = record.toJSON();
+      return [
+        index + 1,
+        String(value.kodeRS),
+        value.namaRS,
+        value.provinsi,
+        value.kabupatenKota,
+        row.kategori || "-",
+        row.jenis_pelayanan || "-",
+        Number(row.total_pasien_rujukan || 0),
+        Number(row.total_pasien_non_rujukan || 0),
+        Number(row.tindak_lanjut_dirawat || 0),
+        Number(row.tindak_lanjut_dirujuk || 0),
+        Number(row.tindak_lanjut_pulang || 0),
+        Number(row.mati_di_igd_laki_laki || 0),
+        Number(row.mati_di_igd_perempuan || 0),
+        Number(row.doa_laki_laki || 0),
+        Number(row.doa_perempuan || 0),
+        Number(row.luka_luka_laki_laki || 0),
+        Number(row.luka_luka_perempuan || 0),
+        Number(row.false_emergency || 0),
+      ];
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("RL 3.3 SatuSehat");
+    [
+      ["RL 3.3 RAWAT DARURAT - SATUSEHAT"],
+      [],
+      ["Periode Data"],
+      [`Bulan : ${namaBulan}`],
+      [`Tahun : ${tahunData}`],
+      [],
+      headers,
+      ...tableRows,
+    ].forEach((row) => worksheet.addRow(row));
+
+    [6, 16, 30, 22, 24, 18, 30, ...Array(12).fill(18)].forEach(
+      (width, index) => {
+        worksheet.getColumn(index + 1).width = width;
+      },
+    );
+    ;[1, 3, 4, 5].forEach((rowNumber) => {
+      worksheet.mergeCells(rowNumber, 1, rowNumber, headers.length);
+    });
+
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber < 7) return;
+
+      row.eachCell({ includeEmpty: true }, (cell, columnNumber) => {
+        cell.border = {
+          top: { style: "thin", color: { argb: "FF000000" } },
+          left: { style: "thin", color: { argb: "FF000000" } },
+          bottom: { style: "thin", color: { argb: "FF000000" } },
+          right: { style: "thin", color: { argb: "FF000000" } },
+        };
+        cell.alignment = {
+          vertical: "middle",
+          horizontal:
+            rowNumber === 7
+              ? "center"
+              : [2, 3, 4, 5, 6, 7].includes(columnNumber)
+                ? "left"
+                : "right",
+          wrapText: true,
+        };
+      });
+    });
+
+    worksheet.getRow(7).font = { bold: true };
+    worksheet.getCell("A1").font = {
+      name: "Calibri",
+      size: 16,
+      bold: true,
+    };
+    worksheet.getCell("A1").alignment = {
+      vertical: "middle",
+      horizontal: "left",
+    };
+    worksheet.getRow(1).height = 24;
+    ;["A3", "A4", "A5"].forEach((address) => {
+      const cell = worksheet.getCell(address);
+      cell.font = { name: "Calibri", size: 12, bold: true };
+      cell.alignment = { vertical: "middle", horizontal: "left" };
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.attachment(`rl33_satusehat_${tahunData}_${value.periode.slice(5)}.xlsx`);
+    return res.send(Buffer.from(buffer));
+  } catch (err) {
+    console.error("Gagal membuat Excel RL 3.3 Satusehat:", err);
+    return res.status(500).json({
+      status: false,
+      message: "Gagal membuat Excel RL 3.3 Satusehat",
       detail: err.message,
     });
   }
