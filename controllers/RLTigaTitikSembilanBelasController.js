@@ -1125,3 +1125,422 @@ export const tulisExcelRL319SatuSehat = async ({
   await workbook.commit();
   return totalBaris;
 };
+
+export const downloadDataRLTigaTitikSembilanBelas = async (req, res) => {
+  const joi = Joi.extend(joiDate);
+  const schema = joi.object({
+    provId: joi.string().allow("", null).optional(),
+    kabId: joi.string().allow("", null).optional(),
+    rsId: joi.string().allow("", null).optional(),
+    periode: joi.date().format("YYYY").required(),
+  });
+
+  const { error, value } = schema.validate(req.query);
+  if (error)
+    return res
+      .status(400)
+      .send({ status: false, message: error.details[0].message });
+
+  const jenisUserId = req.user.jenisUserId;
+
+  if (jenisUserId === 2) {
+    value.provId = req.user.satKerId;
+  } else if (jenisUserId === 3) {
+    value.kabId = req.user.satKerId;
+    value.provId = undefined;
+  }
+
+  try {
+    const baseUrl = process.env.API_FASKES;
+    const username = process.env.username_API_FASKES;
+    const password = process.env.password_API_FASKES;
+
+    // Login selalu dilakukan di awal, dipakai oleh semua role (termasuk role 4)
+    const loginResponse = await axios.post(
+      `${baseUrl}/faskes/login`,
+      { userName: username, password: password },
+      { headers: { "Content-Type": "application/json" } },
+    );
+
+    const token =
+      loginResponse.data.access_token || loginResponse.data.data.access_token;
+
+    let rsList = [];
+    let orgToRsMap = new Map();
+    let orgIdList = [];
+
+    if (jenisUserId === 4) {
+      // ---- RS sendiri: ambil detail RS lewat endpoint /faskes/rumahsakit/{kodeRs} ----
+      const kodeRsSendiri = req.user.satKerId;
+
+      const rsDetailResponse = await axios.get(
+        `${baseUrl}/faskes/rumahsakit/${kodeRsSendiri}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      const rsDetail = rsDetailResponse.data.data ?? rsDetailResponse.data;
+
+      const satuSehatMapping = await satu_sehat_id.findOne({
+        where: { kode_baru_faskes: kodeRsSendiri },
+        attributes: ["kode_baru_faskes", "organization_id"],
+      });
+
+      if (!satuSehatMapping) {
+        return res.status(404).send({
+          status: false,
+          message: "Tidak ada mapping OrganizationId untuk RS ini",
+        });
+      }
+      rsList = [
+        {
+          kodeRs: kodeRsSendiri,
+          namaRs: rsDetail?.nama ?? "",
+          provinsiNama: rsDetail?.provinsiNama ?? "",
+          kabKotaNama: rsDetail?.kabKotaNama ?? "",
+        },
+      ];
+    } else if (value.rsId) {
+      // ---- Role 1/2/3 memilih RS spesifik: ambil detail 1 RS itu saja ----
+      const rsDetailResponse = await axios.get(
+        `${baseUrl}/faskes/rumahsakit/${value.rsId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      const rsDetail = rsDetailResponse.data.data ?? rsDetailResponse.data;
+
+      if (!rsDetail) {
+        return res.status(404).send({
+          status: false,
+          message: "Rumah sakit tidak ditemukan",
+        });
+      }
+
+      if (
+        jenisUserId === 2 &&
+        String(rsDetail.provinsiId) !== String(req.user.satKerId)
+      ) {
+        return res.status(403).send({
+          status: false,
+          message: "RS yang dipilih bukan berada di wilayah Anda",
+        });
+      }
+      if (
+        jenisUserId === 3 &&
+        String(rsDetail.kabKotaId) !== String(req.user.satKerId)
+      ) {
+        return res.status(403).send({
+          status: false,
+          message: "RS yang dipilih bukan berada di wilayah Anda",
+        });
+      }
+
+      rsList = [
+        {
+          kodeRs: value.rsId,
+          namaRs: rsDetail?.nama ?? "",
+          provinsiId: rsDetail?.provinsiId ?? null,
+          kabKotaId: rsDetail?.kabKotaId ?? null,
+          provinsiNama: rsDetail?.provinsiNama ?? "",
+          kabKotaNama: rsDetail?.kabKotaNama ?? "",
+        },
+      ];
+    } else {
+      const params = {};
+
+      switch (jenisUserId) {
+        case 1:
+          if (value.provId) params.provinsiId = value.provId;
+          if (value.kabId) params.kabKotaId = value.kabId;
+          break;
+        case 2:
+          params.provinsiId = req.user.satKerId;
+          if (value.kabId) params.kabKotaId = value.kabId;
+          break;
+        case 3:
+          params.kabKotaId = req.user.satKerId;
+          break;
+      }
+
+      const listRs = await ambilSemuaRs(baseUrl, token, params);
+
+      rsList = listRs
+        .filter((rs) => rs.statusAktivasi === 1)
+        .map((rs) => ({
+          kodeRs: rs.kode,
+          namaRs: rs.nama,
+          provinsiId: rs.provinsi_id,
+          kabKotaId: rs.kab_kota_id,
+          provinsiNama: rs.provinsiNama,
+          kabKotaNama: rs.kabKotaNama,
+        }));
+
+      if (rsList.length === 0) {
+        return res.status(404).send({
+          status: false,
+          message: "Tidak ada rumah sakit aktif pada wilayah yang dipilih",
+        });
+      }
+    }
+
+    // ---- Generate nama file & set header ----
+    const tahun = req.query.periode;
+    const pad = (n) => String(n).padStart(2, "0");
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const namaFile = `RL_3_19_${tahun}_${timestamp}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${namaFile}"`);
+
+    // console.log("res :", res);
+    // console.log("rsList:", rsList);
+
+    await tulisExcelRL319({
+      res,
+      rsList,
+      periode: req.query.periode,
+      judul: "RL 3.19 Cara Bayar",
+      modelDetail: rlTigaTitikSembilanBelasDetail,
+    });
+  } catch (err) {
+    console.error(
+      "downloadDataRLTigaTitikSembilanBelasSatuSehat:",
+      err.message,
+    );
+    if (res.headersSent) {
+      return res.end();
+    }
+    return res.status(500).send({
+      status: false,
+      message: "Gagal mengunduh data",
+    });
+  }
+};
+
+export const tulisExcelRL319 = async ({
+  res,
+  rsList,
+  periode,
+  judul = "RL 3.19 Cara Bayar",
+  modelDetail = rlTigaTitikSembilanBelasDetail,
+}) => {
+  const kodeRsList = rsList.map((rs) => String(rs.kodeRs));
+  const rsMap = new Map(rsList.map((rs) => [String(rs.kodeRs), rs]));
+  const tahun = parseInt(periode, 10);
+
+  // ---- Definisi Header Kolom ----
+  const kolomIdentitas = [
+    { header: "No", key: "no", width: 6 },
+    { header: "Kode RS", key: "kodeRs", width: 14 },
+    { header: "Nama RS", key: "namaRs", width: 35 },
+    { header: "Provinsi", key: "provinsi", width: 22 },
+    { header: "Kab/Kota", key: "kabKota", width: 22 },
+    { header: "Tahun", key: "tahun", width: 10 },
+    { header: "No. Cara Bayar", key: "golonganNo", width: 16 },
+    { header: "Cara Pembayaran", key: "golonganNama", width: 38 },
+  ];
+
+  const semuaKolom = [...kolomIdentitas, ...KOLOM_ANGKA_319];
+  const totalKolom = semuaKolom.length;
+
+  const workbook = new ExcelJS.stream.xlsx.WorkbookWriter({
+    stream: res,
+    useStyles: true,
+  });
+
+  const sheet = workbook.addWorksheet("RL 3.19", {
+    views: [{ state: "frozen", xSplit: 2, ySplit: 6 }],
+  });
+
+  sheet.columns = semuaKolom.map((k) => ({ key: k.key, width: k.width }));
+
+  // ---- Block Judul & Info ----
+  const rJudul = sheet.addRow([judul]);
+  rJudul.font = { bold: true, size: 16 };
+  sheet.mergeCells(1, 1, 1, 4);
+  rJudul.commit();
+
+  const rPeriodeLabel = sheet.addRow(["Periode Data"]);
+  rPeriodeLabel.font = { bold: true };
+  sheet.mergeCells(2, 1, 2, 2);
+  rPeriodeLabel.commit();
+
+  const rTahun = sheet.addRow(["Tahun :", periode]);
+  rTahun.getCell(1).font = { bold: true };
+  rTahun.getCell(2).font = { bold: false };
+  rTahun.commit();
+
+  sheet.addRow([]).commit(); // Baris Kosong
+
+  // ---- Table Header ----
+  const headerRow = sheet.addRow(semuaKolom.map((k) => k.header));
+  headerRow.eachCell({ includeEmpty: true }, (cell) => {
+    cell.font = { bold: true };
+    cell.alignment = {
+      horizontal: "center",
+      vertical: "middle",
+      wrapText: true,
+    };
+    cell.border = BORDER_TIPIS_319;
+  });
+  headerRow.commit();
+
+  // Penampung Grand Total untuk Seluruh RS
+  const grandTotal = {};
+  KOLOM_ANGKA_319.forEach((k) => {
+    grandTotal[k.key] = 0;
+  });
+
+  let totalBaris = 0;
+  let no = 1;
+  const RS_PER_BATCH = 100;
+
+  for (let i = 0; i < kodeRsList.length; i += RS_PER_BATCH) {
+    const chunk = kodeRsList.slice(i, i + RS_PER_BATCH);
+
+    const rows = await modelDetail.findAll({
+      where: {
+        rs_id: { [Op.in]: chunk },
+        tahun: tahun,
+      },
+      include: [
+        {
+          model: golonganObatTigaTitikSembilanBelas,
+          as: "golongan_obat_rl_tiga_titik_sembilan_belas",
+          attributes: ["id", "no", "nama"],
+        },
+      ],
+      raw: true,
+      nest: true,
+    });
+
+    if (!rows || rows.length === 0) continue;
+
+    // ─── 1. GROUPING DATA BERDASARKAN RS_ID ───
+    const groupedByRs = new Map();
+    for (const data of rows) {
+      const rsIdStr = String(data.rs_id);
+      if (!groupedByRs.has(rsIdStr)) {
+        groupedByRs.set(rsIdStr, []);
+      }
+      groupedByRs.get(rsIdStr).push(data);
+    }
+
+    // ─── 2. ITERASI PER RUMAH SAKIT ───
+    for (const [rsId, items] of groupedByRs.entries()) {
+      const rs = rsMap.get(rsId);
+
+      // Urutkan item di dalam RS berdasarkan ID Golongan
+      items.sort(
+        (a, b) =>
+          a.golongan_obat_rl_tiga_titik_sembilan_belas_id -
+          b.golongan_obat_rl_tiga_titik_sembilan_belas_id,
+      );
+
+      // Inisialisasi Subtotal khusus untuk RS ini
+      const subtotalRS = {};
+      KOLOM_ANGKA_319.forEach((k) => {
+        subtotalRS[k.key] = 0;
+      });
+
+      // Cetak Baris Detail RS
+      for (const data of items) {
+        const golNo =
+          data.golongan_obat_rl_tiga_titik_sembilan_belas?.no ??
+          data.golongan_no ??
+          "";
+        const golNama =
+          data.golongan_obat_rl_tiga_titik_sembilan_belas?.nama ??
+          data.golongan_nama ??
+          "";
+
+        const baris = {
+          no: no++,
+          kodeRs: rs?.kodeRs ?? data.rs_id ?? "",
+          namaRs: rs?.namaRs ?? "",
+          provinsi: rs?.provinsiNama ?? "",
+          kabKota: rs?.kabKotaNama ?? "",
+          tahun: data.tahun,
+          golonganNo: golNo,
+          golonganNama: golNama,
+        };
+
+        // Akumulasi angka ke Subtotal RS & Grand Total
+        KOLOM_ANGKA_319.forEach((k) => {
+          const val = Number(data[k.key]) || 0;
+          baris[k.key] = val;
+          subtotalRS[k.key] += val; // Tambah ke total RS ini
+          grandTotal[k.key] += val; // Tambah ke total seluruh RS
+        });
+
+        const excelRow = sheet.addRow(baris);
+        excelRow.eachCell({ includeEmpty: true }, (cell) => {
+          cell.border = BORDER_TIPIS_319;
+          cell.alignment = { vertical: "middle" };
+        });
+        excelRow.commit();
+        totalBaris++;
+      }
+
+      // ─── 3. CETAK BARIS TOTAL PER RUMAH SAKIT ───
+      const barisSubtotalRS = {
+        no: "",
+        kodeRs: rs?.kodeRs ?? rsId ?? "",
+        namaRs: rs?.namaRs ?? "",
+        provinsi: rs?.provinsiNama ?? "",
+        kabKota: rs?.kabKotaNama ?? "",
+        tahun: tahun,
+        golonganNo: "",
+        golonganNama: "TOTAL",
+        ...subtotalRS,
+      };
+
+      const rSubtotal = sheet.addRow(barisSubtotalRS);
+      rSubtotal.eachCell({ includeEmpty: true }, (cell) => {
+        cell.font = { bold: true };
+        cell.border = BORDER_TIPIS_319;
+        cell.alignment = { vertical: "middle" };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFF0F4F8" }, // Warna highlight lembut per RS (Soft Blue/Grey)
+        };
+      });
+      rSubtotal.commit();
+      totalBaris++;
+    }
+  }
+
+  // ─── 4. CETAK BARIS TOTAL KESELURUHAN (AKHIR FILE) ───
+  // const barisGrandTotal = {
+  //   no: "",
+  //   kodeRs: "",
+  //   namaRs: "",
+  //   provinsi: "",
+  //   kabKota: "",
+  //   tahun: "",
+  //   golonganNo: "",
+  //   golonganNama: "TOTAL KESELURUHAN",
+  //   ...grandTotal,
+  // };
+
+  // const rGrandTotal = sheet.addRow(barisGrandTotal);
+  // rGrandTotal.eachCell({ includeEmpty: true }, (cell) => {
+  //   cell.font = { bold: true };
+  //   cell.border = BORDER_TIPIS_319;
+  //   cell.alignment = { vertical: "middle" };
+  //   cell.fill = {
+  //     type: "pattern",
+  //     pattern: "solid",
+  //     fgColor: { argb: "FFE6E6E6" }, // Highlight warna abu-abu terang
+  //   };
+  // });
+  // rGrandTotal.commit();
+
+  await sheet.commit();
+  await workbook.commit();
+  return totalBaris;
+};
