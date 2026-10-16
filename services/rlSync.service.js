@@ -132,8 +132,8 @@ export const doSync = async (organization_id, periode) => {
 
 // ── tambahkan RENTANG_MAP dan transformItem di sini ──
 const RENTANG_MAP = {
-  "0 - < 1 jam": "0_1jam",
-  "1 - < 24 jam": "1_23jam",
+  "< 1 jam": "0_1jam",
+  "1-23 jam": "1_23jam",
   "1-7 hari": "1_7hr",
   "8-28 hari": "8_28hr",
   "29 hari - < 3 bulan": "29hr_3bln",

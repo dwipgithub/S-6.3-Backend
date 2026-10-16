@@ -341,6 +341,7 @@ import {
   manualSyncRL319,
   getDataRLTigaTitikSembilanBelasWithSatuSehat,
   downloadDataRLTigaTitikSembilanBelasSatuSehat,
+  downloadDataRLTigaTitikSembilanBelas,
 } from "../controllers/RLTigaTitikSembilanBelasController.js";
 
 // RL 3.8
@@ -2001,6 +2002,12 @@ router.get(
   "/apisirs6v2/rltigatitiksembilanbelassatusehatdownload",
   verifyToken,
   downloadDataRLTigaTitikSembilanBelasSatuSehat,
+);
+
+router.get(
+  "/apisirs6v2/rltigatitiksembilanbelasdownload",
+  verifyToken,
+  downloadDataRLTigaTitikSembilanBelas,
 );
 
 // RL 4.1
