@@ -1565,7 +1565,7 @@ const tulisExcelRL41SatuSehat = async ({
     //   : []),
     { header: "Kode ICD", group: null, key: "kodeIcd", width: 12 },
     { header: "Diagnosis", group: null, key: "diagnosis", width: 40 },
-    { header: "Bulan Laporan", group: null, key: "bulanLaporan", width: 14 },
+    // { header: "Bulan Laporan", group: null, key: "bulanLaporan", width: 14 },
   ];
 
   const semuaKolomSS = [...kolomIdentitasSS, ...kolomAngkaSS];
@@ -1695,7 +1695,7 @@ const tulisExcelRL41SatuSehat = async ({
         // ...(tampilkanOrgId ? { organizationId: data.organization_id } : {}),
         kodeIcd: data.kode_icd ?? "",
         diagnosis: data.diagnosis ?? "",
-        bulanLaporan: data.bulan_laporan ?? "",
+        // bulanLaporan: data.bulan_laporan ?? "",
       };
 
       kolomAngkaSS.forEach((k) => {
