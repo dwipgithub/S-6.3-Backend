@@ -2546,7 +2546,7 @@ const tulisExcelRL51SatuSehat = async ({
     //   : []),
     { header: "Kode ICD", group: null, key: "kodeIcd", width: 12 },
     { header: "Diagnosis", group: null, key: "diagnosis", width: 40 },
-    { header: "Periode", group: null, key: "periode", width: 14 },
+    // { header: "Periode", group: null, key: "periode", width: 14 },
   ];
 
   const semuaKolomRL51SS = [
@@ -2718,7 +2718,7 @@ const tulisExcelRL51SatuSehat = async ({
           provinsi: rsInfo?.provinsiNama ?? "",
           kabKota: rsInfo?.kabKotaNama ?? "",
           diagnosis: data.diagnosis ?? "",
-          periode: data.periode ?? "",
+          // periode: data.periode ?? "",
           // male_visits/female_visits levelnya per ICD (sama di semua age_id),
           // jadi cukup diambil sekali saja saat baris pertama ICD ini ditemui.
           totalKunjunganL: data.male_visits ?? 0,

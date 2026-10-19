@@ -963,7 +963,7 @@ export const tulisExcelRL319SatuSehat = async ({
     //   : []),
     { header: "Provinsi", group: null, key: "provinsi", width: 22 },
     { header: "Kab/Kota", group: null, key: "kabKota", width: 22 },
-    { header: "Tahun", group: null, key: "tahun", width: 8 },
+    // { header: "Tahun", group: null, key: "tahun", width: 8 },
     { header: "No. Cara Bayar", group: null, key: "golonganNo", width: 14 },
     { header: "Cara Pembayaran", group: null, key: "golonganNama", width: 38 },
   ];
@@ -1077,7 +1077,7 @@ export const tulisExcelRL319SatuSehat = async ({
         // ...(tampilkanOrgId ? { organizationId: data.organization_id } : {}),
         provinsi: rs?.provinsiNama ?? "",
         kabKota: rs?.kabKotaNama ?? "",
-        tahun: data.tahun,
+        // tahun: data.tahun,
         golonganNo: data.golongan_no ?? "", // string, supaya "2.1" tidak jadi angka
         golonganNama: data.golongan_nama ?? "",
       };
@@ -1338,7 +1338,7 @@ export const tulisExcelRL319 = async ({
     { header: "Nama RS", key: "namaRs", width: 35 },
     { header: "Provinsi", key: "provinsi", width: 22 },
     { header: "Kab/Kota", key: "kabKota", width: 22 },
-    { header: "Tahun", key: "tahun", width: 10 },
+    // { header: "Tahun", key: "tahun", width: 10 },
     { header: "No. Cara Bayar", key: "golonganNo", width: 16 },
     { header: "Cara Pembayaran", key: "golonganNama", width: 38 },
   ];
@@ -1463,7 +1463,7 @@ export const tulisExcelRL319 = async ({
           namaRs: rs?.namaRs ?? "",
           provinsi: rs?.provinsiNama ?? "",
           kabKota: rs?.kabKotaNama ?? "",
-          tahun: data.tahun,
+          // tahun: data.tahun,
           golonganNo: golNo,
           golonganNama: golNama,
         };
