@@ -1,3 +1,4 @@
+import axios from "axios";
 import Joi from "joi";
 import joiDate from "@joi/date";
 
@@ -10,6 +11,7 @@ import {
   rlTigaTitikTujuhBelas,
   rlTigaTitikTujuhBelasSatuSehat,
 } from "../models/RLTigaTitikTitikTujuhBelasModel.js";
+
 import { satu_sehat_id } from "../models/UserModel.js";
 import { syncLog } from "../models/SyncLogModel.js";
 
@@ -18,14 +20,160 @@ import {
   isStale,
   isSyncing,
 } from "../services/rlSync.service.js";
+
 import { fetchRL317FromSatuSehat } from "../services/satusehat.service.js";
+
 import { golonganObatRLTigaTitikTujuhBelas } from "../models/RLTigaTitikTujuhBelasGolonganObatModel.js";
 
 const sseClients = new Map();
 
-export const getRLTigaTitikTujuhBelas = (req, res) => {
-  // const joi = Joi.extend(joi)
+// ======================================================
+// HELPER IDENTITAS RUMAH SAKIT DARI API FASKES
+// ======================================================
 
+const ambilObjekResponseRL317 = (responseData) => {
+  let result = responseData;
+
+  for (let i = 0; i < 3; i++) {
+    if (
+      result &&
+      !Array.isArray(result) &&
+      typeof result === "object" &&
+      result.data !== undefined
+    ) {
+      result = result.data;
+    } else {
+      break;
+    }
+  }
+
+  return result;
+};
+
+const ambilNamaWilayahRL317 = (obj, keys) => {
+  for (const key of keys) {
+    const value = key
+      .split(".")
+      .reduce((current, part) => current?.[part], obj);
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+
+    if (typeof value === "number") {
+      return String(value);
+    }
+  }
+
+  return "";
+};
+
+const ambilIdentitasRsRL317 = async (rsId, namaRsDefault = "") => {
+  const identitas = {
+    kodeRs: rsId || "",
+    namaRs: namaRsDefault || "",
+    provinsiNama: "",
+    kabKotaNama: "",
+  };
+
+  const baseUrl = process.env.API_FASKES;
+  const username = process.env.username_API_FASKES;
+  const password = process.env.password_API_FASKES;
+
+  if (!baseUrl || !username || !password) {
+    console.warn("[RL 3.17] Konfigurasi API Faskes belum lengkap.");
+
+    return identitas;
+  }
+
+  try {
+    const loginResponse = await axios.post(
+      `${baseUrl}/faskes/login`,
+      {
+        userName: username,
+        password,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        timeout: 15000,
+      },
+    );
+
+    const token =
+      loginResponse.data?.access_token ||
+      loginResponse.data?.data?.access_token;
+
+    if (!token) {
+      throw new Error("Access token API Faskes tidak ditemukan");
+    }
+
+    const response = await axios.get(
+      `${baseUrl}/faskes/rumahsakit/${encodeURIComponent(rsId)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        timeout: 15000,
+      },
+    );
+
+    const detail = ambilObjekResponseRL317(response.data);
+
+    if (!detail) {
+      return identitas;
+    }
+
+    identitas.namaRs =
+      detail.nama ||
+      detail.namaRs ||
+      detail.nama_rumah_sakit ||
+      detail.nama_rs ||
+      namaRsDefault ||
+      "";
+
+    identitas.provinsiNama = ambilNamaWilayahRL317(detail, [
+      "provinsiNama",
+      "provinsi_nama",
+      "namaProvinsi",
+      "nama_provinsi",
+      "provinsi.nama",
+      "provinsi.name",
+      "provinsi.label",
+    ]);
+
+    identitas.kabKotaNama = ambilNamaWilayahRL317(detail, [
+      "kabKotaNama",
+      "kab_kota_nama",
+      "kabupatenKotaNama",
+      "kabupaten_kota_nama",
+      "namaKabKota",
+      "namaKabupatenKota",
+      "nama_kabupaten_kota",
+      "kabkota.nama",
+      "kabkota.name",
+      "kabKota.nama",
+      "kabKota.name",
+      "kabupatenKota.nama",
+      "kabupaten_kota.nama",
+    ]);
+  } catch (error) {
+    // Data RL tetap dapat diakses jika API identitas gagal.
+    console.error(
+      `[RL 3.17] Gagal mengambil identitas RS ${rsId}:`,
+      error.message,
+    );
+  }
+
+  return identitas;
+};
+
+// ======================================================
+// GET RL 3.17
+// ======================================================
+
+export const getRLTigaTitikTujuhBelas = (req, res) => {
   const schema = Joi.object({
     rsId: Joi.string().required(),
     periode: Joi.number().required(),
@@ -33,52 +181,62 @@ export const getRLTigaTitikTujuhBelas = (req, res) => {
     limit: Joi.number(),
   });
 
-  const { error, value } = schema.validate(req.query);
+  const { error } = schema.validate(req.query);
 
   if (error) {
-    res.status(400).send({
+    return res.status(400).send({
       status: false,
       message: error.details[0].message,
     });
-    return;
   }
 
   get(req, (err, results) => {
-    // console.log(req.user)
-    // console.log(results)
-    const message = results.length ? "data found" : "data not found";
-    res.status(200).send({
+    if (err) {
+      return res.status(422).send({
+        status: false,
+        message: err.message || err,
+      });
+    }
+
+    const data = results || [];
+
+    return res.status(200).send({
       status: true,
-      message: message,
-      data: results,
+      message: data.length ? "data found" : "data not found",
+      data,
     });
   });
 };
+
+// ======================================================
+// SHOW RL 3.17
+// ======================================================
 
 export const showRLTigaTitikTujuhBelas = (req, res) => {
   show(req.params.id, (err, results) => {
     if (err) {
-      res.status(422).send({
+      return res.status(422).send({
         status: false,
-        message: err,
+        message: err.message || err,
       });
-      return;
     }
 
-    const message = results.length ? "data found" : "data not found";
-    const data = results.length ? results[0] : null;
+    const data = results && results.length ? results[0] : null;
 
-    res.status(200).send({
+    return res.status(200).send({
       status: true,
-      message: message,
-      data: data,
+      message: data ? "data found" : "data not found",
+      data,
     });
   });
 };
 
+// ======================================================
+// INSERT DATA RL 3.17
+// ======================================================
+
 export const insertDataRLTigaTitikTujuhBelas = async (req, res) => {
   const schema = Joi.object({
-    // periodeBulan: Joi.number().greater(0).less(13).required(),
     periodeTahun: Joi.number().greater(2022).required(),
     data: Joi.array()
       .items(
@@ -93,51 +251,48 @@ export const insertDataRLTigaTitikTujuhBelas = async (req, res) => {
       .required(),
   });
 
-  const { error, value } = schema.validate(req.body);
+  const { error } = schema.validate(req.body);
+
   if (error) {
-    res.status(404).send({
+    return res.status(404).send({
       status: false,
       message: error.details[0].message,
     });
-    return;
   }
 
-  // const periodeBulan = String(req.body.periodeBulan)
   const periode = String(req.body.periodeTahun);
-  // const periode = periodeTahun
 
   const transaction = await databaseSIRS.transaction();
+
   try {
     const resultInsertHeader = await rlTigaTitikTujuhBelas.create(
       {
         rs_id: req.user.satKerId,
-        periode: periode,
+        periode,
         user_id: req.user.id,
       },
       {
-        transaction: transaction,
+        transaction,
       },
     );
 
-    const dataDetail = req.body.data.map((value, index) => {
-      return {
-        rs_id: req.user.satKerId,
-        periode: periode,
-        rl_tiga_titik_tujuh_belas_id: resultInsertHeader.id,
-        golongan_obat_id: value.golonganObatId,
-        jumlah_item_obat: value.jumlahItemObat,
-        jumlah_item_obat_rs: value.jumlahItemObatRs,
-
-        user_id: req.user.id,
-      };
-    });
+    const dataDetail = req.body.data.map((value) => ({
+      rs_id: req.user.satKerId,
+      periode,
+      rl_tiga_titik_tujuh_belas_id: resultInsertHeader.id,
+      golongan_obat_id: value.golonganObatId,
+      jumlah_item_obat: value.jumlahItemObat,
+      jumlah_item_obat_rs: value.jumlahItemObatRs,
+      user_id: req.user.id,
+    }));
 
     await rlTigaTitikTujuhBelasDetail.bulkCreate(dataDetail, {
-      transaction: transaction,
+      transaction,
     });
 
     await transaction.commit();
-    res.status(201).send({
+
+    return res.status(201).send({
       status: true,
       message: "data created",
       data: {
@@ -145,33 +300,35 @@ export const insertDataRLTigaTitikTujuhBelas = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log(error);
     await transaction.rollback();
+
+    console.error(error);
+
     if (error.name === "SequelizeUniqueConstraintError") {
-      res.status(400).send({
+      return res.status(400).send({
         status: false,
         message: "Duplicate Entry",
       });
-    } else {
-      res.status(400).send({
-        status: false,
-        message: error,
-      });
     }
+
+    return res.status(400).send({
+      status: false,
+      message: error.message || error,
+    });
   }
 };
 
+// ======================================================
+// UPDATE DATA RL 3.17
+// ======================================================
+
 export const updateRLTigaTitikTujuhBelas = async (req, res) => {
-  // console.log(req)
   try {
     const update = await rlTigaTitikTujuhBelasDetail.update(
       {
-        // rl_tiga_titik_tujuh_belas_id: resultInsertHeader.id,
         golongan_obat_id: req.body.golonganObatId,
         jumlah_item_obat: req.body.jumlahItemObat,
         jumlah_item_obat_rs: req.body.jumlahItemObatRs,
-        // rs_id: req.user.rsId,
-        // periode: req.body.periode,
         user_id: req.user.id,
       },
       {
@@ -181,14 +338,31 @@ export const updateRLTigaTitikTujuhBelas = async (req, res) => {
         },
       },
     );
-    res.status(200).json({
+
+    if (update[0] === 0) {
+      return res.status(404).json({
+        status: false,
+        message: "Data tidak ditemukan atau tidak berubah",
+      });
+    }
+
+    return res.status(200).json({
       status: true,
       message: update,
     });
   } catch (error) {
-    console.log(error.message);
+    console.error(error.message);
+
+    return res.status(500).json({
+      status: false,
+      message: error.message,
+    });
   }
 };
+
+// ======================================================
+// DELETE DATA RL 3.17
+// ======================================================
 
 export const deleteRLTigaTitikTujuhBelas = async (req, res) => {
   try {
@@ -198,76 +372,111 @@ export const deleteRLTigaTitikTujuhBelas = async (req, res) => {
         rs_id: req.user.satKerId,
       },
     });
-    if (count == 0) {
-      res.status(404).send({
-        status: true,
+
+    if (count === 0) {
+      return res.status(404).send({
+        status: false,
         message: "Data Not Found",
         data: {
           deleted_rows: count,
         },
       });
-    } else {
-      res.status(201).send({
-        status: true,
-        message: "data deleted successfully",
-        data: {
-          deleted_rows: count,
-        },
-      });
     }
+
+    return res.status(201).send({
+      status: true,
+      message: "data deleted successfully",
+      data: {
+        deleted_rows: count,
+      },
+    });
   } catch (error) {
-    res.status(404).send({
+    return res.status(500).send({
       status: false,
-      message: error,
+      message: error.message || error,
     });
   }
 };
 
+// ======================================================
+// GET DATA RL 3.17 SATUSEHAT + IDENTITAS RS
+// ======================================================
+
 export const getDataRLTigaTitikTujuhBelasWithSatuSehat = async (req, res) => {
   const schema = Joi.object({
     rsId: Joi.string().required(),
-    periode: Joi.string().min(4).max(4).required(),
-    page: Joi.number().min(1).default(1),
-    limit: Joi.number().min(1).max(200).default(50),
+    periode: Joi.string()
+      .pattern(/^\d{4}$/)
+      .required(),
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(200).default(50),
   });
 
   const { error, value } = schema.validate(req.query);
-  if (error)
-    return res
-      .status(400)
-      .send({ status: false, message: error.details[0].message });
+
+  if (error) {
+    return res.status(400).send({
+      status: false,
+      message: error.details[0].message,
+    });
+  }
 
   const { rsId, periode, page, limit } = value;
 
+  // Validasi akses akun rumah sakit.
   if (req.user.jenisUserId == 4 && rsId != req.user.satKerId) {
-    return res
-      .status(403)
-      .send({ status: false, message: "Kode RS Tidak Sesuai" });
+    return res.status(403).send({
+      status: false,
+      message: "Kode RS Tidak Sesuai",
+    });
   }
 
   const rsIdFinal = req.user.jenisUserId == 4 ? req.user.satKerId : rsId;
-  const namaRs = req.user.jenisUserId == 4 ? req.user.nama : null;
+
+  const namaRsDefault = req.user.jenisUserId == 4 ? req.user.nama : "";
 
   try {
     const offset = (page - 1) * limit;
 
+    // Ambil mapping kode RS dan Organization ID.
     const satuSehat = await satu_sehat_id.findOne({
-      where: { kode_baru_faskes: rsIdFinal },
-      attributes: ["organization_id"],
+      where: {
+        kode_baru_faskes: rsIdFinal,
+      },
+      attributes: ["kode_baru_faskes", "organization_id"],
     });
 
     if (!satuSehat) {
-      return res
-        .status(404)
-        .send({ status: false, message: "OrganizationId Tidak Ada" });
+      return res.status(404).send({
+        status: false,
+        message: "OrganizationId Tidak Ada",
+      });
     }
 
     const organization_id = satuSehat.organization_id?.substring(0, 9);
 
-    // Jalankan semua query DB + cek sync status secara paralel
+    if (!organization_id) {
+      return res.status(404).send({
+        status: false,
+        message: "OrganizationId tidak valid",
+      });
+    }
+
+    // Ambil identitas rumah sakit dari API Faskes.
+    const identitasRs = await ambilIdentitasRsRL317(
+      satuSehat.kode_baru_faskes || rsIdFinal,
+      namaRsDefault,
+    );
+
+    const where = {
+      organization_id,
+      periode,
+    };
+
+    // Ambil data, jumlah data, dan status sinkronisasi.
     const [rows, totalRows, syncInfo, currentlySyncing] = await Promise.all([
       rlTigaTitikTujuhBelasSatuSehat.findAll({
-        where: { organization_id, periode },
+        where,
         limit,
         offset,
         order: [["id", "ASC"]],
@@ -276,18 +485,34 @@ export const getDataRLTigaTitikTujuhBelasWithSatuSehat = async (req, res) => {
           attributes: ["nama"],
         },
       }),
+
       rlTigaTitikTujuhBelasSatuSehat.count({
-        where: { organization_id, periode },
+        where,
       }),
+
       getLastSyncInfo(organization_id, periode, "rl_3_17"),
-      isSyncing(organization_id, periode, "rl_3_17"), // ← cukup panggil sekali di sini
+
+      isSyncing(organization_id, periode, "rl_3_17"),
     ]);
 
-    // Kirim response ke FE
-    res.status(200).send({
+    // Tambahkan identitas RS pada setiap baris data.
+    const dataWithIdentity = rows.map((row) => {
+      const item = typeof row.toJSON === "function" ? row.toJSON() : { ...row };
+
+      return {
+        ...item,
+        kodeRs: identitasRs.kodeRs,
+        namaRs: identitasRs.namaRs || item.organization_name || "",
+        provinsiNama: identitasRs.provinsiNama,
+        kabKotaNama: identitasRs.kabKotaNama,
+      };
+    });
+
+    return res.status(200).send({
       status: true,
-      message: rows.length ? "data found" : "data not found",
-      data: rows,
+      message: dataWithIdentity.length ? "data found" : "data not found",
+      data: dataWithIdentity,
+      rumahSakit: identitasRs,
       pagination: {
         page,
         limit,
@@ -298,74 +523,101 @@ export const getDataRLTigaTitikTujuhBelasWithSatuSehat = async (req, res) => {
         lastSync: syncInfo?.synced_at ?? null,
         status: syncInfo?.status ?? "never",
         totalData: syncInfo?.total_data ?? 0,
-        isUpdating: currentlySyncing, // ← pakai hasil yang sudah ada
+        isUpdating: currentlySyncing,
       },
     });
+  } catch (error) {
+    console.error("[RL 3.17] Gagal mengambil data:", error);
 
-    // Cek stale & trigger background sync jika perlu
-    const stale = await isStale(organization_id, periode, "rl_3_17");
-
-    if (stale && !currentlySyncing) {
-      doSync(organization_id, periode, namaRs)
-        .then(() => notifySseClients(organization_id, periode))
-        .catch((err) =>
-          console.error(`[Sync BG Error] RS ${rsIdFinal}:`, err.message),
-        );
+    if (!res.headersSent) {
+      return res.status(500).send({
+        status: false,
+        message: error.message,
+      });
     }
-  } catch (err) {
-    res.status(500).send({ status: false, message: err.message });
   }
+
+  // Tidak dijalankan di sini karena response sudah dikirim.
+  // Sinkronisasi otomatis ditangani sebelum response jika diperlukan.
 };
+
+// ======================================================
+// MANUAL SYNC RL 3.17
+// ======================================================
 
 export const manualSyncRL317 = async (req, res) => {
   const { rsId, periode } = req.body;
 
   if (!rsId || !periode) {
-    return res
-      .status(400)
-      .send({ status: false, message: "rsId dan periode wajib diisi" });
+    return res.status(400).send({
+      status: false,
+      message: "rsId dan periode wajib diisi",
+    });
   }
 
-  // Validasi akses jika user RS (jenisUserId == 4)
+  if (!/^\d{4}$/.test(String(periode))) {
+    return res.status(400).send({
+      status: false,
+      message: "Format periode harus YYYY",
+    });
+  }
+
   if (req.user.jenisUserId == 4 && rsId != req.user.satKerId) {
-    return res
-      .status(403)
-      .send({ status: false, message: "Kode RS Tidak Sesuai" });
+    return res.status(403).send({
+      status: false,
+      message: "Kode RS Tidak Sesuai",
+    });
   }
 
   try {
     const satuSehat = await satu_sehat_id.findOne({
-      where: { kode_baru_faskes: rsId },
+      where: {
+        kode_baru_faskes: rsId,
+      },
       attributes: ["organization_id"],
     });
 
     if (!satuSehat) {
-      return res
-        .status(404)
-        .send({ status: false, message: "OrganizationId Tidak Ada" });
+      return res.status(404).send({
+        status: false,
+        message: "OrganizationId Tidak Ada",
+      });
     }
 
     const organization_id = satuSehat.organization_id?.substring(0, 9);
-    const namaRs = req.user.jenisUserId == 4 ? req.user.nama : null;
 
-    // Cegah dobel sync
+    const namaRs = req.user.jenisUserId == 4 ? req.user.nama : "";
+
     const syncing = await isSyncing(organization_id, periode, "rl_3_17");
+
     if (syncing) {
-      return res
-        .status(200)
-        .send({ status: true, message: "Sedang dalam proses sync" });
+      return res.status(200).send({
+        status: true,
+        message: "Sedang dalam proses sync",
+      });
     }
 
-    // Langsung sync tanpa cek isStale (ini manual, jadi force)
     doSync(organization_id, periode, namaRs)
       .then(() => notifySseClients(organization_id, periode))
-      .catch((err) => console.error("[Manual Sync Error]", err.message));
+      .catch((error) => {
+        console.error("[Manual Sync Error]", error.message);
+      });
 
-    return res.status(200).send({ status: true, message: "Sync dimulai" });
-  } catch (err) {
-    return res.status(500).send({ status: false, message: err.message });
+    return res.status(200).send({
+      status: true,
+      message: "Sync dimulai",
+    });
+  } catch (error) {
+    return res.status(500).send({
+      status: false,
+      message: error.message,
+    });
   }
 };
+
+// ======================================================
+// SUBSCRIBE STATUS SYNC VIA SSE
+// ======================================================
 
 export const subscribeSyncStatusRL317 = (req, res) => {
   const { rsId, periode } = req.query;
@@ -374,20 +626,35 @@ export const subscribeSyncStatusRL317 = (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
+
   res.flushHeaders();
 
-  // Simpan koneksi
-  if (!sseClients.has(key)) sseClients.set(key, new Set());
+  if (!sseClients.has(key)) {
+    sseClients.set(key, new Set());
+  }
+
   sseClients.get(key).add(res);
 
-  // Ping tiap 30 detik supaya koneksi tidak putus
-  const ping = setInterval(() => res.write(": ping\n\n"), 30000);
+  const ping = setInterval(() => {
+    if (!res.writableEnded) {
+      res.write(": ping\n\n");
+    }
+  }, 30000);
 
   req.on("close", () => {
     clearInterval(ping);
+
     sseClients.get(key)?.delete(res);
+
+    if (sseClients.get(key)?.size === 0) {
+      sseClients.delete(key);
+    }
   });
 };
+
+// ======================================================
+// PROSES SINKRONISASI RL 3.17
+// ======================================================
 
 const doSync = async (organization_id, periode, namaRs) => {
   const logEntry = await syncLog.create({
@@ -402,15 +669,19 @@ const doSync = async (organization_id, periode, namaRs) => {
 
     if (!rawData || rawData.status === 404 || rawData.error) {
       await logEntry.update({
-        status: "success", // tetap success, bukan failed
+        status: "success",
         total_data: 0,
         synced_at: new Date(),
         error_msg: rawData?.message ?? "data not found",
       });
-      return { success: true, total: 0 };
+
+      return {
+        success: true,
+        total: 0,
+      };
     }
 
-    const dataArray = Array.isArray(rawData.data.golongan_obat)
+    const dataArray = Array.isArray(rawData.data?.golongan_obat)
       ? rawData.data.golongan_obat
       : [];
 
@@ -420,12 +691,16 @@ const doSync = async (organization_id, periode, namaRs) => {
         total_data: 0,
         synced_at: new Date(),
       });
-      return { success: true, total: 0 };
+
+      return {
+        success: true,
+        total: 0,
+      };
     }
 
     const mapped = dataArray.map((item) => ({
       organization_id,
-      organization_name: namaRs,
+      organization_name: namaRs || "",
       periode,
       golongan_obat_id: item.golongan_obat_id,
       jumlah_item_obat: item.jumlah_item_obat ?? 0,
@@ -434,6 +709,7 @@ const doSync = async (organization_id, periode, namaRs) => {
 
     await rlTigaTitikTujuhBelasSatuSehat.bulkCreate(mapped, {
       updateOnDuplicate: [
+        "organization_name",
         "jumlah_item_obat",
         "jumlah_item_obat_rs",
         "updated_at",
@@ -446,37 +722,60 @@ const doSync = async (organization_id, periode, namaRs) => {
       synced_at: new Date(),
     });
 
-    return { success: true, total: mapped.length };
-  } catch (err) {
-    const errStatus = err.response?.status || err.status;
-    const errData = err.response?.data;
+    return {
+      success: true,
+      total: mapped.length,
+    };
+  } catch (error) {
+    const errStatus = error.response?.status || error.status;
 
-    // Jika terdeteksi 404 dari response SatuSehat, handle sebagai "success" dengan 0 data
+    const errData = error.response?.data;
+
     if (errStatus === 404 || errData?.status === 404) {
       await logEntry.update({
-        status: "success", // Tetap dianggap sukses karena hanya data kosong/tidak ada
+        status: "success",
         total_data: 0,
         synced_at: new Date(),
         error_msg: errData?.message ?? "data not found",
       });
-      return { success: true, total: 0 };
+
+      return {
+        success: true,
+        total: 0,
+      };
     }
 
-    // Jika benar-benar error sistem (misal: network timeout, DB error, dll) baru set failed
-    await logEntry.update({ status: "failed", error_msg: err.message });
-    throw err;
+    await logEntry.update({
+      status: "failed",
+      error_msg: error.message,
+    });
+
+    throw error;
   }
 };
+
+// ======================================================
+// NOTIFIKASI SSE
+// ======================================================
 
 const notifySseClients = (rsId, periode) => {
   const key = `${rsId}_${periode}`;
   const clients = sseClients.get(key);
-  if (!clients?.size) return;
+
+  if (!clients?.size) {
+    return;
+  }
+
   const payload = JSON.stringify({
     event: "sync_done",
     rsId,
     periode,
     at: new Date(),
   });
-  clients.forEach((client) => client.write(`data: ${payload}\n\n`));
+
+  clients.forEach((client) => {
+    if (!client.writableEnded) {
+      client.write(`data: ${payload}\n\n`);
+    }
+  });
 };
