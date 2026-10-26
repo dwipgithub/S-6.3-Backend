@@ -1,6 +1,7 @@
 import Joi from "joi";
 
 import { databaseSIRS } from "../config/Database.js";
+import axios from "axios";
 
 import {
   rlTigaTitikSepuluh,
@@ -546,51 +547,308 @@ export const deleteDataRLTigaTitikSepuluh = async (req, res) => {
   }
 };
 
+/**
+ * Mengambil seluruh daftar RS dari API Faskes dengan pagination.
+ * Struktur nama wilayah mengikuti API yang digunakan RL 4.1.
+ */
+const ambilSemuaRsRL310 = async (baseUrl, token, params = {}) => {
+  const hasil = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const response = await axios.get(`${baseUrl}/faskes/rumahsakit`, {
+      params: {
+        ...params,
+        page,
+        limit: 1000,
+      },
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      timeout: 30000,
+    });
+
+    const body = response.data;
+    const daftar = body?.data;
+
+    if (Array.isArray(daftar)) {
+      hasil.push(...daftar);
+    }
+
+    totalPages = Number(body?.pagination?.totalNumberOfPages ?? 1);
+
+    page++;
+  } while (page <= totalPages);
+
+  return hasil;
+};
+
+/**
+ * Mengambil data RL 3.10 Satu Sehat beserta identitas RS.
+ */
 export const getDataRLTigaTitikSepuluhWithSatuSehat = async (req, res) => {
   const schema = Joi.object({
     rsId: Joi.string().required(),
-    periode: Joi.string().min(7).max(7).required(),
-    page: Joi.number().min(1).default(1),
-    limit: Joi.number().min(1).max(200).default(50),
+    periode: Joi.string()
+      .pattern(/^\d{4}-(0[1-9]|1[0-2])$/)
+      .required(),
+    page: Joi.number().integer().min(1).default(1),
+    limit: Joi.number().integer().min(1).max(200).default(50),
   });
 
   const { error, value } = schema.validate(req.query);
-  if (error)
-    return res
-      .status(400)
-      .send({ status: false, message: error.details[0].message });
+
+  if (error) {
+    return res.status(400).send({
+      status: false,
+      message: error.details[0].message,
+    });
+  }
 
   const { rsId, periode, page, limit } = value;
 
-  if (req.user.jenisUserId == 4 && rsId != req.user.satKerId) {
-    return res
-      .status(403)
-      .send({ status: false, message: "Kode RS Tidak Sesuai" });
+  // Validasi akses untuk user rumah sakit.
+  if (
+    Number(req.user.jenisUserId) === 4 &&
+    String(rsId) !== String(req.user.satKerId)
+  ) {
+    return res.status(403).send({
+      status: false,
+      message: "Kode RS Tidak Sesuai",
+    });
   }
 
-  const rsIdFinal = req.user.jenisUserId == 4 ? req.user.satKerId : rsId;
-  const namaRs = req.user.jenisUserId == 4 ? req.user.nama : null;
+  const rsIdFinal =
+    Number(req.user.jenisUserId) === 4 ? req.user.satKerId : rsId;
+
+  const namaRsUser = Number(req.user.jenisUserId) === 4 ? req.user.nama : "";
 
   try {
     const offset = (page - 1) * limit;
 
+    // =====================================================
+    // 1. MAPPING KODE RS DAN ORGANIZATION ID SATU SEHAT
+    // =====================================================
     const satuSehat = await satu_sehat_id.findOne({
-      where: { kode_baru_faskes: rsIdFinal },
-      attributes: ["organization_id"],
+      where: {
+        kode_baru_faskes: rsIdFinal,
+      },
+      attributes: ["kode_baru_faskes", "organization_id"],
     });
 
-    if (!satuSehat) {
-      return res
-        .status(404)
-        .send({ status: false, message: "OrganizationId Tidak Ada" });
+    if (!satuSehat || !satuSehat.organization_id) {
+      return res.status(404).send({
+        status: false,
+        message: "OrganizationId Tidak Ada",
+      });
     }
 
-    const organization_id = satuSehat.organization_id?.substring(0, 9);
+    const organization_id = satuSehat.organization_id.substring(0, 9);
 
-    // Jalankan semua query DB + cek sync status secara paralel
+    // =====================================================
+    // 2. SIAPKAN IDENTITAS DEFAULT RUMAH SAKIT
+    // =====================================================
+    const identitasRs = {
+      kodeRs: satuSehat.kode_baru_faskes || rsIdFinal,
+      namaRs: namaRsUser || "",
+      provinsiNama: "",
+      kabKotaNama: "",
+    };
+
+    // =====================================================
+    // 3. AMBIL IDENTITAS RS DARI API FASKES
+    // =====================================================
+    const baseUrl = process.env.API_FASKES;
+    const username = process.env.username_API_FASKES;
+    const password = process.env.password_API_FASKES;
+
+    if (baseUrl && username && password) {
+      try {
+        // Login API Faskes.
+        const loginResponse = await axios.post(
+          `${baseUrl}/faskes/login`,
+          {
+            userName: username,
+            password,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+            timeout: 15000,
+          },
+        );
+
+        const token =
+          loginResponse.data?.access_token ||
+          loginResponse.data?.data?.access_token;
+
+        if (!token) {
+          throw new Error("Access token API Faskes tidak ditemukan");
+        }
+
+        // Ambil detail rumah sakit terlebih dahulu.
+        let rsDetail = null;
+
+        try {
+          const detailResponse = await axios.get(
+            `${baseUrl}/faskes/rumahsakit/${rsIdFinal}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+              timeout: 15000,
+            },
+          );
+
+          const detailBody = detailResponse.data;
+
+          rsDetail = detailBody?.data?.data ?? detailBody?.data ?? detailBody;
+        } catch (detailError) {
+          console.warn(
+            `[RL 3.10] Gagal mengambil detail RS ${rsIdFinal}:`,
+            detailError.response?.data || detailError.message,
+          );
+        }
+
+        // Gunakan daftar RS sebagai sumber identitas wilayah.
+        // Endpoint daftar RS ini juga digunakan pada RL 4.1.
+        let rsDariDaftar = null;
+
+        try {
+          const daftarRs = await ambilSemuaRsRL310(baseUrl, token);
+
+          rsDariDaftar = daftarRs.find((rs) => {
+            const kode =
+              rs?.kode ?? rs?.kodeRs ?? rs?.kode_rs ?? rs?.kode_baru_faskes;
+
+            return String(kode ?? "") === String(rsIdFinal);
+          });
+        } catch (listError) {
+          console.warn(
+            `[RL 3.10] Gagal mengambil daftar RS ${rsIdFinal}:`,
+            listError.response?.data || listError.message,
+          );
+        }
+
+        // Mendukung nama field yang digunakan API Faskes.
+        const ambilNama = (...values) => {
+          for (const value of values) {
+            if (typeof value === "string" && value.trim()) {
+              return value.trim();
+            }
+
+            if (typeof value === "number" && Number.isFinite(value)) {
+              return String(value);
+            }
+          }
+
+          return "";
+        };
+
+        const detail = rsDetail || {};
+        const daftar = rsDariDaftar || {};
+
+        // Nama RS.
+        identitasRs.namaRs = ambilNama(
+          detail.nama,
+          detail.namaRs,
+          detail.nama_rumah_sakit,
+          daftar.nama,
+          daftar.namaRs,
+          namaRsUser,
+        );
+
+        // Nama provinsi.
+        identitasRs.provinsiNama = ambilNama(
+          daftar.provinsiNama,
+          daftar.provinsi_nama,
+          daftar.namaProvinsi,
+          daftar.nama_provinsi,
+          daftar.provinsi?.nama,
+          daftar.provinsi?.name,
+          detail.provinsiNama,
+          detail.provinsi_nama,
+          detail.namaProvinsi,
+          detail.nama_provinsi,
+          detail.provinsi?.nama,
+          detail.provinsi?.name,
+        );
+
+        // Nama kabupaten/kota.
+        identitasRs.kabKotaNama = ambilNama(
+          daftar.kabKotaNama,
+          daftar.kab_kota_nama,
+          daftar.kabupatenKotaNama,
+          daftar.kabupaten_kota_nama,
+          daftar.namaKabKota,
+          daftar.namaKabupatenKota,
+          daftar.kabkota?.nama,
+          daftar.kabkota?.name,
+          daftar.kabKota?.nama,
+          daftar.kabKota?.name,
+          daftar.kabupatenKota?.nama,
+          daftar.kabupaten_kota?.nama,
+          detail.kabKotaNama,
+          detail.kab_kota_nama,
+          detail.kabupatenKotaNama,
+          detail.kabupaten_kota_nama,
+          detail.namaKabKota,
+          detail.namaKabupatenKota,
+          detail.kabkota?.nama,
+          detail.kabkota?.name,
+          detail.kabKota?.nama,
+          detail.kabKota?.name,
+          detail.kabupatenKota?.nama,
+          detail.kabupaten_kota?.nama,
+        );
+
+        // Log hanya jika data wilayah tetap belum ditemukan.
+        if (!identitasRs.provinsiNama || !identitasRs.kabKotaNama) {
+          console.warn(
+            `[RL 3.10] Identitas wilayah belum lengkap untuk RS ${rsIdFinal}`,
+            {
+              ditemukanDiDaftar: Boolean(rsDariDaftar),
+              provinsiNama: identitasRs.provinsiNama,
+              kabKotaNama: identitasRs.kabKotaNama,
+              provinsiId:
+                daftar.provinsiId ??
+                daftar.provinsi_id ??
+                detail.provinsiId ??
+                detail.provinsi_id ??
+                null,
+              kabKotaId:
+                daftar.kabKotaId ??
+                daftar.kab_kota_id ??
+                detail.kabKotaId ??
+                detail.kab_kota_id ??
+                null,
+            },
+          );
+        }
+      } catch (apiError) {
+        // Kegagalan API Faskes tidak menggagalkan pembacaan data RL.
+        console.error(
+          `[RL 3.10] Gagal mengambil identitas RS ${rsIdFinal}:`,
+          apiError.response?.data || apiError.message,
+        );
+      }
+    } else {
+      console.warn("[RL 3.10] Konfigurasi API Faskes belum lengkap.");
+    }
+
+    // =====================================================
+    // 4. AMBIL DATA RL, PAGINATION, DAN STATUS SINKRONISASI
+    // =====================================================
+    const where = {
+      organization_id,
+      periode_laporan: periode,
+    };
+
     const [rows, totalRows, syncInfo, currentlySyncing] = await Promise.all([
       rlTigaTitikSepuluhSatuSehat.findAll({
-        where: { organization_id, periode_laporan: periode },
+        where,
         limit,
         offset,
         order: [["id", "ASC"]],
@@ -600,44 +858,65 @@ export const getDataRLTigaTitikSepuluhWithSatuSehat = async (req, res) => {
           attributes: ["nama"],
         },
       }),
+
       rlTigaTitikSepuluhSatuSehat.count({
-        where: { organization_id, periode_laporan: periode },
+        where,
       }),
+
       getLastSyncInfo(organization_id, periode, "rl_3_10"),
-      isSyncing(organization_id, periode, "rl_3_10"), // ← cukup panggil sekali di sini
+
+      isSyncing(organization_id, periode, "rl_3_10"),
     ]);
 
-    // Kirim response ke FE
-    res.status(200).send({
+    // =====================================================
+    // 5. TAMBAHKAN IDENTITAS KE SETIAP BARIS DATA
+    // =====================================================
+    const data = rows.map((row) => ({
+      ...row.toJSON(),
+
+      kodeRs: identitasRs.kodeRs,
+
+      namaRs: identitasRs.namaRs || row.organization_name || "",
+
+      provinsiNama: identitasRs.provinsiNama || "",
+
+      kabKotaNama: identitasRs.kabKotaNama || "",
+    }));
+
+    // =====================================================
+    // 6. KIRIM RESPONSE
+    // =====================================================
+    return res.status(200).send({
       status: true,
       message: rows.length ? "data found" : "data not found",
-      data: rows,
+
+      identitasRs,
+      data,
+
       pagination: {
         page,
         limit,
         totalRows,
         totalPages: Math.ceil(totalRows / limit),
       },
+
       sync: {
         lastSync: syncInfo?.synced_at ?? null,
         status: syncInfo?.status ?? "never",
         totalData: syncInfo?.total_data ?? 0,
-        isUpdating: currentlySyncing, // ← pakai hasil yang sudah ada
+        isUpdating: currentlySyncing,
       },
     });
-
-    // Cek stale & trigger background sync jika perlu
-    const stale = await isStale(organization_id, periode, "rl_3_10");
-
-    if (stale && !currentlySyncing) {
-      doSync(organization_id, periode, namaRs)
-        .then(() => notifySseClients(organization_id, periode))
-        .catch((err) =>
-          console.error(`[Sync BG Error] RS ${rsIdFinal}:`, err.message),
-        );
-    }
   } catch (err) {
-    res.status(500).send({ status: false, message: err.message });
+    console.error(
+      "[RL 3.10] Error mengambil data Satu Sehat:",
+      err.response?.data || err.message,
+    );
+
+    return res.status(500).send({
+      status: false,
+      message: err.message,
+    });
   }
 };
 
