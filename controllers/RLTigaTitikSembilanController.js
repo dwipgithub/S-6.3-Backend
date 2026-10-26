@@ -14,6 +14,10 @@ import {
   getLastSyncInfo39,
 } from "../services/rlSync.service.js";
 
+import axios from "axios";
+import dotenv from "dotenv";
+dotenv.config();
+
 export const getRLTigaTitikSembilan = (req, res) => {
     const joi = Joi.extend(joiDate) 
 
@@ -242,7 +246,29 @@ export const getRLTigaTitikSembilanSatuSehat = async (req, res) => {
     const [tahunStr, bulanStr] = periodeFormatted.split('-'); 
     const bulanClean = parseInt(bulanStr, 10);
 
+    const baseUrl = process.env.API_FASKES;
+    const username = process.env.username_API_FASKES;
+    const password = process.env.password_API_FASKES;
+
     try {
+        // 1. Login API Faskes
+        const loginResponse = await axios.post(
+            `${baseUrl}/faskes/login`,
+            { userName: username, password: password },
+            { headers: { "Content-Type": "application/json" } },
+        );
+
+        const token =
+            loginResponse.data.access_token || loginResponse.data.data.access_token;
+
+        // 2. Ambil detail RS berdasarkan kode faskes (rsIdFinal)
+        const rsDetailResponse = await axios.get(
+            `${baseUrl}/faskes/rumahsakit/${rsIdFinal}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        const rsDetail = rsDetailResponse.data.data ?? rsDetailResponse.data;
+
         const offset = (page - 1) * limit;
 
         const satuSehat = await satu_sehat_id.findOne({
@@ -258,7 +284,7 @@ export const getRLTigaTitikSembilanSatuSehat = async (req, res) => {
 
         const organization_id = satuSehat.organization_id?.substring(0, 9);
 
-        // PERBAIKAN: Mengganti isSyncing -> isSyncing39
+        // 3. Ambil data RL 3.9 & info sync
         const [rows, totalRows, syncInfo, currentlySyncing] = await Promise.all([
             rlTigaTitikSembilanSatuSehat.findAll({
                 where: { 
@@ -282,13 +308,25 @@ export const getRLTigaTitikSembilanSatuSehat = async (req, res) => {
                 },
             }),
             getLastSyncInfo39(organization_id, periodeShort),
-            isSyncing39(organization_id, periodeShort), // FIXED
+            isSyncing39(organization_id, periodeShort),
         ]);
+
+        // 4. Map hasil rows untuk menyisipkan informasi faskes (kode, nama RS, provinsi, kabupaten/kota)
+        const formattedRows = rows.map((row) => {
+            const rowData = row.toJSON ? row.toJSON() : row;
+            return {
+                kode_faskes: rsIdFinal,
+                nama_rs: rsDetail?.nama ?? "",
+                provinsi: rsDetail?.provinsiNama ?? "",
+                kabupaten_kota: rsDetail?.kabKotaNama ?? "",
+                ...rowData,
+            };
+        });
 
         return res.status(200).send({
             status: true,
-            message: rows.length ? "data found" : "data not found",
-            data: rows,
+            message: formattedRows.length ? "data found" : "data not found",
+            data: formattedRows,
             pagination: {
                 page,
                 limit,
