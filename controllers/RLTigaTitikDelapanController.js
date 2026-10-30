@@ -17,6 +17,10 @@ import {
   getLastSyncInfo38,
 } from "../services/rlSync.service.js";
 
+import axios from "axios";
+import dotenv from "dotenv";
+dotenv.config();
+
 export const getDataRLTigaTitikDelapan = (req, res) => {
   rlTigaTitikDelapan
     .findAll({
@@ -386,109 +390,135 @@ export const getRLTigaTitikDelapanSatuSehat = async (req, res) => {
     const [tahunStr, bulanStr] = periodeFormatted.split('-'); 
     const bulanClean = parseInt(bulanStr, 10);
 
+    const baseUrl = process.env.API_FASKES;
+    const username = process.env.username_API_FASKES;
+    const password = process.env.password_API_FASKES;
+
     try {
-    const offset = (page - 1) * limit;
+        // 1. Login API Faskes
+        const loginResponse = await axios.post(
+            `${baseUrl}/faskes/login`,
+            { userName: username, password: password },
+            { headers: { "Content-Type": "application/json" } },
+        );
 
-    const satuSehat = await satu_sehat_id.findOne({
-        where: { kode_baru_faskes: rsIdFinal },
-        attributes: ["organization_id",],
-    });
+        const token =
+            loginResponse.data.access_token || loginResponse.data.data.access_token;
 
-    if (!satuSehat) {
-        return res
-            .status(404)
-            .send({ status: false, message: "OrganizationId Tidak Ada" });
-    }
+        // 2. Ambil detail RS berdasarkan kode faskes (rsIdFinal)
+        const rsDetailResponse = await axios.get(
+            `${baseUrl}/faskes/rumahsakit/${rsIdFinal}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+        );
 
-    const organization_id = satuSehat.organization_id?.substring(0, 9);
+        const rsDetail = rsDetailResponse.data.data ?? rsDetailResponse.data;
 
-    const [rows, totalRows, syncInfo, currentlySyncing] = await Promise.all([
-        rlTigaTitikDelapanSatuSehat.findAll({
-          where: { 
-            organization_id, 
-            bulan: bulanClean, 
-            tahun: tahunStr 
-          },
-          limit,
-          offset,
-        }),
-        rlTigaTitikDelapanSatuSehat.count({
-          where: { 
-            organization_id, 
-            bulan: bulanClean, 
-            tahun: tahunStr 
-          },
-        }),
-        getLastSyncInfo38(organization_id, periodeShort),
-        isSyncing38(organization_id, periodeShort),
-    ]);
+        const offset = (page - 1) * limit;
 
-    // 1. Grouping Data
-    const groupMap = new Map();
+        const satuSehat = await satu_sehat_id.findOne({
+            where: { kode_baru_faskes: rsIdFinal },
+            attributes: ["organization_id",],
+        });
 
-    rows.forEach((item) => {
-        const groupId = item.nama_group_id;
-        
-        if (!groupMap.has(groupId)) {
-            groupMap.set(groupId, {
-                nama_group_id: groupId,
-                nama_group: item.nama_group || "",
-                pemeriksaan: []
-            });
+        if (!satuSehat) {
+            return res
+                .status(404)
+                .send({ status: false, message: "OrganizationId Tidak Ada" });
         }
 
-        groupMap.get(groupId).pemeriksaan.push({
-            pemeriksaan_id: item.pemeriksaan_id,
-            pemeriksaan: item.pemeriksaan,
-            jumlah_pemeriksaan: {
-                laki_laki: String(item.jumlah_laki_laki ?? 0),
-                perempuan: String(item.jumlah_perempuan ?? 0)
-            },
-            nilai_rata_rata: {
-                laki_laki: item.rata_rata_laki_laki !== null ? String(item.rata_rata_laki_laki) : null,
-                perempuan: item.rata_rata_perempuan !== null ? String(item.rata_rata_perempuan) : null
+        const organization_id = satuSehat.organization_id?.substring(0, 9);
+
+        const [rows, totalRows, syncInfo, currentlySyncing] = await Promise.all([
+            rlTigaTitikDelapanSatuSehat.findAll({
+              where: { 
+                organization_id, 
+                bulan: bulanClean, 
+                tahun: tahunStr 
+              },
+              limit,
+              offset,
+            }),
+            rlTigaTitikDelapanSatuSehat.count({
+              where: { 
+                organization_id, 
+                bulan: bulanClean, 
+                tahun: tahunStr 
+              },
+            }),
+            getLastSyncInfo38(organization_id, periodeShort),
+            isSyncing38(organization_id, periodeShort),
+        ]);
+
+        // 3. Grouping Data
+        const groupMap = new Map();
+
+        rows.forEach((item) => {
+            const groupId = item.nama_group_id;
+            
+            if (!groupMap.has(groupId)) {
+                groupMap.set(groupId, {
+                    nama_group_id: groupId,
+                    nama_group: item.nama_group || "",
+                    pemeriksaan: []
+                });
             }
-        });
-    });
 
-    const groupPemeriksaan = Array.from(groupMap.values());
-
-    // 2. PERBAIKAN SORTING: Urutkan item pemeriksaan berdasarkan penomoran hirarki string (2, 2.1, 2.14, 3, 3.1, dst)
-    groupPemeriksaan.forEach((group) => {
-        group.pemeriksaan.sort((a, b) => {
-            return a.pemeriksaan.localeCompare(b.pemeriksaan, undefined, {
-                numeric: true,
-                sensitivity: 'base'
+            groupMap.get(groupId).pemeriksaan.push({
+                pemeriksaan_id: item.pemeriksaan_id,
+                pemeriksaan: item.pemeriksaan,
+                jumlah_pemeriksaan: {
+                    laki_laki: String(item.jumlah_laki_laki ?? 0),
+                    perempuan: String(item.jumlah_perempuan ?? 0)
+                },
+                nilai_rata_rata: {
+                    laki_laki: item.rata_rata_laki_laki !== null ? String(item.rata_rata_laki_laki) : null,
+                    perempuan: item.rata_rata_perempuan !== null ? String(item.rata_rata_perempuan) : null
+                }
             });
         });
-    });
 
-    return res.status(200).send({
-        status: true,
-        message: rows.length ? "data found" : "data not found",
-        data: {
-            organization_id: organization_id, 
-            tahun: parseInt(tahunStr, 10),
-            bulan: bulanClean,
-            group_pemeriksaan: groupPemeriksaan
-        },
-        pagination: {
-            page,
-            limit,
-            totalRows,
-            totalPages: Math.ceil(totalRows / limit),
-        },
-        sync: {
-            lastSync: syncInfo?.synced_at ?? null,
-            status: syncInfo?.status ?? "never",
-            totalData: syncInfo?.total_data ?? 0,
-            isUpdating: currentlySyncing,
-        },
-    });
+        const groupPemeriksaan = Array.from(groupMap.values());
 
-} catch (err) {
-    return res.status(500).send({ status: false, message: err.message });
-}
+        // 4. PERBAIKAN SORTING: Urutkan item pemeriksaan berdasarkan penomoran hirarki string (2, 2.1, 2.14, 3, 3.1, dst)
+        groupPemeriksaan.forEach((group) => {
+            group.pemeriksaan.sort((a, b) => {
+                return a.pemeriksaan.localeCompare(b.pemeriksaan, undefined, {
+                    numeric: true,
+                    sensitivity: 'base'
+                });
+            });
+        });
+
+        return res.status(200).send({
+            status: true,
+            message: rows.length ? "data found" : "data not found",
+            data: {
+                kode_faskes: rsIdFinal,
+                nama_rs: rsDetail?.nama ?? "",
+                provinsi: rsDetail?.provinsiNama ?? "",
+                kabupaten_kota: rsDetail?.kabKotaNama ?? "",
+                organization_id: organization_id, 
+                tahun: parseInt(tahunStr, 10),
+                bulan: bulanClean,
+                group_pemeriksaan: groupPemeriksaan
+            },
+            pagination: {
+                page,
+                limit,
+                totalRows,
+                totalPages: Math.ceil(totalRows / limit),
+            },
+            sync: {
+                lastSync: syncInfo?.synced_at ?? null,
+                status: syncInfo?.status ?? "never",
+                totalData: syncInfo?.total_data ?? 0,
+                isUpdating: currentlySyncing,
+            },
+        });
+
+    } catch (err) {
+        return res.status(500).send({ status: false, message: err.message });
+    }
 };
 
 export const manualSyncRL38 = async (req, res) => {
