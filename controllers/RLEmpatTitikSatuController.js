@@ -1429,6 +1429,10 @@ export const downloadDataRLEmpatTitikSatuSatuSehat = async (req, res) => {
 // KONFIGURASI KOLOM EXCEL RL 4.1 SATU SEHAT
 // ============================================
 
+// ============================================
+// KONFIGURASI KOLOM EXCEL RL 4.1 SATU SEHAT
+// ============================================
+
 const KELOMPOK_UMUR_SS = [
   { key: "0_1jam", label: "0 - 1 Jam" },
   { key: "1_23jam", label: "1 - 23 Jam" },
@@ -1457,16 +1461,8 @@ const KELOMPOK_UMUR_SS = [
   { key: "lebih85th", label: "≥ 85 Tahun" },
 ];
 
-const KOLOM_TOTAL_SS = [
-  { key: "keluar_hidup_mati_l", label: "Total Keluar Hidup & Mati (L)" },
-  { key: "keluar_hidup_mati_p", label: "Total Keluar Hidup & Mati (P)" },
-  { key: "keluar_hidup_mati_total", label: "Total Keluar Hidup & Mati" },
-  { key: "keluar_mati_l", label: "Total Keluar Mati (L)" },
-  { key: "keluar_mati_p", label: "Total Keluar Mati (P)" },
-  { key: "keluar_mati_total", label: "Total Keluar Mati" },
-];
-
-const kolomAngkaSS = [
+// Kolom Angka Umur
+const kolomUmurSS = [
   ...KELOMPOK_UMUR_SS.flatMap((u) => [
     {
       header: "L",
@@ -1495,25 +1491,49 @@ const kolomAngkaSS = [
       width: 6,
     },
   ]),
-  ...KOLOM_TOTAL_SS.map((t) => ({
-    header: t.label,
+];
+
+// Susunan Kolom Total Sesuai Urutan Asli dengan Ukuran Width Disesuaikan
+const kolomTotalSS = [
+  {
+    header: "L",
+    group: "Jumlah Pasien Hidup dan Mati",
+    key: "keluar_hidup_mati_l",
+    width: 18, // Ditingkatkan dari 10 ke 18 agar total lebar (L + P = 36) cukup menampung header
+  },
+  {
+    header: "P",
+    group: "Jumlah Pasien Hidup dan Mati",
+    key: "keluar_hidup_mati_p",
+    width: 18, // Ditingkatkan dari 10 ke 18
+  },
+  {
+    header: "Total Pasien Hidup dan Mati",
     group: null,
-    key: t.key,
-    width: 16,
-  })),
+    key: "keluar_hidup_mati_total",
+    width: 24, // Ditingkatkan dari 16 ke 24
+  },
+  {
+    header: "L",
+    group: "Jumlah Pasien Keluar Mati",
+    key: "keluar_mati_l",
+    width: 18, // Ditingkatkan dari 10 ke 18 agar total lebar (L + P = 36) cukup menampung header
+  },
+  {
+    header: "P",
+    group: "Jumlah Pasien Keluar Mati",
+    key: "keluar_mati_p",
+    width: 18, // Ditingkatkan dari 10 ke 18
+  },
+  {
+    header: "Total Pasien Keluar Mati",
+    group: null,
+    key: "keluar_mati_total",
+    width: 24, // Ditingkatkan dari 16 ke 24
+  },
 ];
 
-const kolomIdentitasSS = [
-  { header: "No", group: null, key: "no", width: 5 },
-  { header: "Kode RS", group: null, key: "kodeRs", width: 12 },
-  { header: "Nama RS", group: null, key: "namaRs", width: 35 },
-  // { header: "Organization ID", group: null, key: "organizationId", width: 20 },
-  { header: "Kode ICD", group: null, key: "kodeIcd", width: 12 },
-  { header: "Diagnosis", group: null, key: "diagnosis", width: 40 },
-  { header: "Bulan Laporan", group: null, key: "bulanLaporan", width: 14 },
-];
-
-const semuaKolomSS = [...kolomIdentitasSS, ...kolomAngkaSS];
+const kolomAngkaSS = [...kolomUmurSS, ...kolomTotalSS];
 
 const NAMA_BULAN_SS = [
   "Januari",
@@ -1553,19 +1573,8 @@ const tulisExcelRL41SatuSehat = async ({
     { header: "Nama RS", group: null, key: "namaRs", width: 35 },
     { header: "Provinsi", group: null, key: "provinsi", width: 35 },
     { header: "Kab/Kota", group: null, key: "kabKota", width: 35 },
-    // ...(tampilkanOrgId
-    //   ? [
-    //       {
-    //         header: "Organization ID",
-    //         group: null,
-    //         key: "organizationId",
-    //         width: 20,
-    //       },
-    //     ]
-    //   : []),
     { header: "Kode ICD", group: null, key: "kodeIcd", width: 12 },
     { header: "Diagnosis", group: null, key: "diagnosis", width: 40 },
-    // { header: "Bulan Laporan", group: null, key: "bulanLaporan", width: 14 },
   ];
 
   const semuaKolomSS = [...kolomIdentitasSS, ...kolomAngkaSS];
@@ -1598,54 +1607,104 @@ const tulisExcelRL41SatuSehat = async ({
 
   // Add row Bulan
   const rBulan = sheet.addRow(["Bulan :", namaBulan]);
-  rBulan.getCell(1).font = { bold: true }; // Hanya sel label "Bulan :" yang bold
-  rBulan.getCell(2).font = { bold: false }; // Memastikan nilai namaBulan tidak bold
+  rBulan.getCell(1).font = { bold: true };
+  rBulan.getCell(2).font = { bold: false };
   rBulan.commit();
 
   // Add row Tahun
   const rTahun = sheet.addRow(["Tahun :", tahunStr]);
-  rTahun.getCell(1).font = { bold: true }; // Hanya sel label "Tahun :" yang bold
-  rTahun.getCell(2).font = { bold: false }; // Memastikan nilai tahunStr tidak bold
+  rTahun.getCell(1).font = { bold: true };
+  rTahun.getCell(2).font = { bold: false };
   rTahun.commit();
 
   sheet.addRow([]).commit();
 
-  // ---- Header tabel ----
-  // ---- Header tabel: 3 baris (grup besar, kelompok umur, L/P) ----
-  const JUMLAH_KOLOM_IDENTITAS_SS = kolomIdentitasSS.length;
-  // kolomAngkaSS menggabungkan kolom umur + kolom total jadi satu array,
-  // jadi perlu dikurangi jumlah kolom total (KOLOM_TOTAL_SS) untuk dapat jumlah kolom umur saja
-  const JUMLAH_KOLOM_UMUR_SS = kolomAngkaSS.length - KOLOM_TOTAL_SS.length;
+  // ---- Header tabel: 3 baris ----
+  const JUMLAH_KOLOM_IDENTITAS = kolomIdentitasSS.length;
+  const JUMLAH_KOLOM_UMUR = kolomUmurSS.length;
 
-  const baris0 = semuaKolomSS.map((k) => (k.group ? "" : k.header));
-  baris0[JUMLAH_KOLOM_IDENTITAS_SS] = "PASIEN KELUAR HIDUP & MATI";
+  // Baris 0: Identitas + Grup Umur + Group Total Gender
+  const baris0 = semuaKolomSS.map((k) => (!k.group ? k.header : ""));
+  baris0[JUMLAH_KOLOM_IDENTITAS] = "PASIEN KELUAR HIDUP & MATI";
+  baris0[JUMLAH_KOLOM_IDENTITAS + JUMLAH_KOLOM_UMUR] =
+    "Jumlah Pasien Hidup dan Mati";
+  baris0[JUMLAH_KOLOM_IDENTITAS + JUMLAH_KOLOM_UMUR + 3] =
+    "Jumlah Pasien Keluar Mati";
 
-  const baris1 = semuaKolomSS.map((k) => (k.group ? k.group : ""));
-  const baris2 = semuaKolomSS.map((k) => (k.group ? k.header : ""));
+  // Baris 1: Sub-group umur & Subheader Gender Total (L/P)
+  const baris1 = semuaKolomSS.map((k) => {
+    if (
+      k.group === "Jumlah Pasien Hidup dan Mati" ||
+      k.group === "Jumlah Pasien Keluar Mati"
+    ) {
+      return k.header; // Nilai L atau P
+    }
+    return k.group ? k.group : "";
+  });
+
+  // Baris 2: Sub-header umur (L/P)
+  const baris2 = semuaKolomSS.map((k) => {
+    if (
+      k.group === "Jumlah Pasien Hidup dan Mati" ||
+      k.group === "Jumlah Pasien Keluar Mati"
+    ) {
+      return "";
+    }
+    return k.group ? k.header : "";
+  });
 
   const r0 = sheet.addRow(baris0);
   const r1 = sheet.addRow(baris1);
   const r2 = sheet.addRow(baris2);
 
+  // 1. Merge "PASIEN KELUAR HIDUP & MATI"
   sheet.mergeCells(
     r0.number,
-    JUMLAH_KOLOM_IDENTITAS_SS + 1,
+    JUMLAH_KOLOM_IDENTITAS + 1,
     r0.number,
-    JUMLAH_KOLOM_IDENTITAS_SS + JUMLAH_KOLOM_UMUR_SS,
+    JUMLAH_KOLOM_IDENTITAS + JUMLAH_KOLOM_UMUR,
   );
 
-  const rowHeaderAwal = r1.number;
-  let col = 1;
-  while (col <= totalKolom) {
-    const k = semuaKolomSS[col - 1];
+  // 2. Merge Header "Jumlah Pasien Hidup dan Mati" (2 Kolom: L dan P)
+  sheet.mergeCells(
+    r0.number,
+    JUMLAH_KOLOM_IDENTITAS + JUMLAH_KOLOM_UMUR + 1,
+    r0.number,
+    JUMLAH_KOLOM_IDENTITAS + JUMLAH_KOLOM_UMUR + 2,
+  );
+
+  // 3. Merge Header "Jumlah Pasien Keluar Mati" (2 Kolom: L dan P)
+  sheet.mergeCells(
+    r0.number,
+    JUMLAH_KOLOM_IDENTITAS + JUMLAH_KOLOM_UMUR + 4,
+    r0.number,
+    JUMLAH_KOLOM_IDENTITAS + JUMLAH_KOLOM_UMUR + 5,
+  );
+
+  // 4. Merge Vertikal untuk Kolom Identitas & Kolom Total Tanpa Subheader (r0 sampai r2)
+  let colIndex = 1;
+  semuaKolomSS.forEach((k) => {
     if (!k.group) {
-      sheet.mergeCells(r0.number, col, rowHeaderAwal + 1, col);
-      col += 1;
-    } else {
-      sheet.mergeCells(rowHeaderAwal, col, rowHeaderAwal, col + 1);
-      col += 2;
+      sheet.mergeCells(r0.number, colIndex, r2.number, colIndex);
     }
+    colIndex++;
+  });
+
+  // 5. Merge Kelompok Umur (Sub-group Umur di Baris 1 secara Horizontal)
+  let colGroup = JUMLAH_KOLOM_IDENTITAS + 1;
+  while (colGroup <= JUMLAH_KOLOM_IDENTITAS + JUMLAH_KOLOM_UMUR) {
+    sheet.mergeCells(r1.number, colGroup, r1.number, colGroup + 1);
+    colGroup += 2;
   }
+
+  // 6. Merge Vertikal untuk Subheader L dan P pada Kolom Total (r1 sampai r2)
+  const idxHidupMatiL = JUMLAH_KOLOM_IDENTITAS + JUMLAH_KOLOM_UMUR + 1;
+  sheet.mergeCells(r1.number, idxHidupMatiL, r2.number, idxHidupMatiL); // L Hidup Mati
+  sheet.mergeCells(r1.number, idxHidupMatiL + 1, r2.number, idxHidupMatiL + 1); // P Hidup Mati
+
+  const idxMatiL = JUMLAH_KOLOM_IDENTITAS + JUMLAH_KOLOM_UMUR + 4;
+  sheet.mergeCells(r1.number, idxMatiL, r2.number, idxMatiL); // L Mati
+  sheet.mergeCells(r1.number, idxMatiL + 1, r2.number, idxMatiL + 1); // P Mati
 
   [r0, r1, r2].forEach((r) => {
     r.eachCell({ includeEmpty: true }, (cell) => {
@@ -1653,7 +1712,7 @@ const tulisExcelRL41SatuSehat = async ({
       cell.alignment = {
         horizontal: "center",
         vertical: "middle",
-        wrapText: true,
+        wrapText: true, // Memastikan teks turun ke bawah jika masih kurang lebar
       };
       cell.border = BORDER_TIPIS_SS;
     });
@@ -1692,10 +1751,8 @@ const tulisExcelRL41SatuSehat = async ({
         namaRs: rsInfo?.namaRs ?? "",
         provinsi: rsInfo?.provinsiNama ?? "",
         kabKota: rsInfo?.kabKotaNama ?? "",
-        // ...(tampilkanOrgId ? { organizationId: data.organization_id } : {}),
         kodeIcd: data.kode_icd ?? "",
         diagnosis: data.diagnosis ?? "",
-        // bulanLaporan: data.bulan_laporan ?? "",
       };
 
       kolomAngkaSS.forEach((k) => {
