@@ -1,22 +1,11 @@
-import { StatusSatset } from "../models/StatusSatset.js";
+import { canAccessSatset } from "../services/satsetAccess.service.js";
 
 export const getStatusSatset = async (req, res) => {
   try {
-    const data = await StatusSatset.findOne({
-      attributes: ["status_satset"],
-    });
-
-    // Kalau tidak ada data
-    if (!data) {
-      return res.status(200).json({
-        status: true,
-        status_satset: 0, // default kalau tidak ada data
-      });
-    }
-
+    const bolehLihat = await canAccessSatset(req.user);
     return res.status(200).json({
       status: true,
-      status_satset: data.status_satset,
+      status_satset: bolehLihat ? 1 : 0,
     });
   } catch (error) {
     console.error("Error getStatusSatset:", error);

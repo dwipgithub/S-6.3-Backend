@@ -13,6 +13,7 @@ import {
 } from "../controllers/UsersController.js";
 import { verifyToken } from "../middleware/VerifyToken.js";
 import { verifyCsrfToken } from "../middleware/VerifyCsrfToken.js";
+import { requireSatsetAccess } from "../middleware/SatsetAccess.js";
 import { refreshToken } from "../controllers/RefreshTokenController.js";
 
 // Absensi
@@ -1989,18 +1990,21 @@ router.post(
   verifyCsrfToken,
   verifyHmac,
   verifyToken,
+  requireSatsetAccess,
   manualSyncRL319,
 );
 
 router.get(
   "/apisirs6v2/rltigatitiksembilanbelassatusehat",
   verifyToken,
+  requireSatsetAccess,
   getDataRLTigaTitikSembilanBelasWithSatuSehat,
 );
 
 router.get(
   "/apisirs6v2/rltigatitiksembilanbelassatusehatdownload",
   verifyToken,
+  requireSatsetAccess,
   downloadDataRLTigaTitikSembilanBelasSatuSehat,
 );
 
@@ -2068,12 +2072,14 @@ router.patch(
 router.get(
   "/apisirs6v2/rlempattitiksatusatusehat",
   verifyToken,
+  requireSatsetAccess,
   getDataRLEmpatTitikSatuWithSatuSehat,
 );
 
 router.get(
   "/apisirs6v2/rlempattitiksatusatusehatSubscribe",
   verifyToken,
+  requireSatsetAccess,
   subscribeSyncStatus,
 );
 
@@ -2082,6 +2088,7 @@ router.post(
   verifyCsrfToken,
   verifyToken,
   verifyHmac,
+  requireSatsetAccess,
   manualSyncRL41,
 );
 
@@ -2150,12 +2157,14 @@ router.delete(
 router.get(
   "/apisirs6v2/rllimatitiksatusatusehatshow",
   verifyToken,
+  requireSatsetAccess,
   getDataRLLimaTitikSatuSatuSehatShow,
 );
 
 router.get(
   "/apisirs6v2/rllimatitiksatusatusehatpage",
   verifyToken,
+  requireSatsetAccess,
   getDataRLLimaTitikSatuSatuSehatShowPaging,
 );
 
@@ -2168,12 +2177,14 @@ router.get(
 router.get(
   "/apisirs6v2/rllimatitiksatusatusehat",
   verifyToken,
+  requireSatsetAccess,
   getDataRL51WithSyncStatus,
 );
 
 router.get(
   "/apisirs6v2/rllimatitiksatusatusehatSubscribe",
   verifyToken,
+  requireSatsetAccess,
   subscribeSyncStatusRL51,
 );
 
@@ -2182,6 +2193,7 @@ router.post(
   verifyCsrfToken,
   verifyToken,
   verifyHmac,
+  requireSatsetAccess,
   manualSyncRL51,
 );
 
