@@ -1118,6 +1118,8 @@ export const getDataRLEmpatTitikSatuWithSatuSehat = async (req, res) => {
       isSyncing(organization_id, periodeShort), // ← cukup panggil sekali di sini
     ]);
 
+    const { latest, lastSuccess } = syncInfo;
+
     // Kirim response ke FE
     res.status(200).send({
       status: true,
@@ -1130,24 +1132,27 @@ export const getDataRLEmpatTitikSatuWithSatuSehat = async (req, res) => {
         totalPages: Math.ceil(totalRows / limit),
       },
       sync: {
-        lastSync: syncInfo?.synced_at ?? null,
-        status: syncInfo?.status ?? "never",
-        totalData: syncInfo?.total_data ?? 0,
-        isUpdating: currentlySyncing, // ← pakai hasil yang sudah ada
+        status: latest?.status ?? "never", // syncing | success | failed | never
+        isUpdating: currentlySyncing,
+        lastSync: lastSuccess?.synced_at ?? null, // hanya sukses
+        totalData: lastSuccess?.total_data ?? 0,
+        lastAttemptId: latest?.id ?? null, // untuk dibandingkan di FE
+        lastAttemptAt: latest?.createdAt ?? null,
+        lastError: latest?.status === "failed" ? latest.error_msg : null,
       },
     });
 
     // Cek stale & trigger background sync jika perlu
-    const stale = await isStale(organization_id, periodeShort);
+    // const stale = await isStale(organization_id, periodeShort);
 
-    if (stale && !currentlySyncing) {
-      // OTOMATIS SYNC
-      // doSync(organization_id, periodeShort)
-      //   .then(() => notifySseClients(organization_id, periodeShort))
-      //   .catch((err) =>
-      //     console.error(`[Sync BG Error] RS ${rsIdFinal}:`, err.message),
-      //   );
-    }
+    // if (stale && !currentlySyncing) {
+    // OTOMATIS SYNC
+    // doSync(organization_id, periodeShort)
+    //   .then(() => notifySseClients(organization_id, periodeShort))
+    //   .catch((err) =>
+    //     console.error(`[Sync BG Error] RS ${rsIdFinal}:`, err.message),
+    //   );
+    // }
   } catch (err) {
     res.status(500).send({ status: false, message: err.message });
   }

@@ -36,12 +36,40 @@ export const isSyncingRL51 = async (orgId, periode) => {
   return !!log;
 };
 
-export const getLastSyncInfoRL51 = async (orgId, periode) => {
-  return await syncLog.findOne({
-    where: { orgId, tipe_rl: TIPE_RL, periode },
-    order: [["synced_at", "DESC"]],
-    attributes: ["status", "synced_at", "total_data", "error_msg"],
-  });
+// export const getLastSyncInfoRL51 = async (orgId, periode) => {
+//   return await syncLog.findOne({
+//     where: { orgId, tipe_rl: TIPE_RL, periode },
+//     order: [["synced_at", "DESC"]],
+//     attributes: ["status", "synced_at", "total_data", "error_msg"],
+//   });
+// };
+
+export const getLastSyncInfoRL51 = async (
+  orgId,
+  periode,
+  tipe_rl = "rl_5_1",
+) => {
+  const base = { orgId, tipe_rl, periode };
+
+  const [latest, lastSuccess] = await Promise.all([
+    // percobaan sync terakhir, apa pun statusnya
+    syncLog.findOne({
+      where: base,
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+      attributes: ["id", "status", "error_msg", "createdAt"],
+    }),
+    // sync sukses terakhir (untuk "Terakhir Sync")
+    syncLog.findOne({
+      where: { ...base, status: "success" },
+      order: [["synced_at", "DESC"]],
+      attributes: ["synced_at", "total_data"],
+    }),
+  ]);
+
+  return { latest, lastSuccess };
 };
 
 // ─────────────────────────────────────────────

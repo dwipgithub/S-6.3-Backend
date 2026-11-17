@@ -1543,6 +1543,7 @@ export const getDataRL51WithSyncStatus = async (req, res) => {
       });
     }
 
+    const { latest, lastSuccess } = syncInfo;
     // ── Kirim response ke FE dulu ──
     res.status(200).send({
       status: true,
@@ -1556,26 +1557,29 @@ export const getDataRL51WithSyncStatus = async (req, res) => {
         pages: Math.ceil(totalIcd / limit),
       },
       sync: {
-        lastSync: syncInfo?.synced_at ?? null,
-        status: syncInfo?.status ?? "never",
-        totalData: syncInfo?.total_data ?? 0,
+        status: latest?.status ?? "never", // syncing | success | failed | never
         isUpdating: currentlySyncing,
+        lastSync: lastSuccess?.synced_at ?? null, // hanya sukses
+        totalData: lastSuccess?.total_data ?? 0,
+        lastAttemptId: latest?.id ?? null, // untuk dibandingkan di FE
+        lastAttemptAt: latest?.createdAt ?? null,
+        lastError: latest?.status === "failed" ? latest.error_msg : null,
       },
     });
 
     // ── Cek stale & background sync ──
-    const stale = await isStaleRL51(organization_id, periodeget);
-    if (stale && !currentlySyncing) {
-      // SYNC OTOMATIS
-      // doSyncRL51(organization_id, periodeget)
-      //   .then(() => notifySseClients(organization_id, periodeget))
-      //   .catch((err) =>
-      //     console.error(
-      //       `[RL51 BG Sync Error] org=${organization_id}:`,
-      //       err.message,
-      //     ),
-      //   );
-    }
+    // const stale = await isStaleRL51(organization_id, periodeget);
+    // if (stale && !currentlySyncing) {
+    // SYNC OTOMATIS
+    // doSyncRL51(organization_id, periodeget)
+    //   .then(() => notifySseClients(organization_id, periodeget))
+    //   .catch((err) =>
+    //     console.error(
+    //       `[RL51 BG Sync Error] org=${organization_id}:`,
+    //       err.message,
+    //     ),
+    //   );
+    // }
   } catch (err) {
     res.status(500).send({ status: false, message: err.message });
   }

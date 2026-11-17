@@ -38,11 +38,27 @@ export const isSyncing = async (orgId, periode, tipe_rl = "rl_4_1") => {
 };
 
 export const getLastSyncInfo = async (orgId, periode, tipe_rl = "rl_4_1") => {
-  return await syncLog.findOne({
-    where: { orgId: orgId, tipe_rl, periode },
-    order: [["synced_at", "DESC"]],
-    attributes: ["status", "synced_at", "total_data", "error_msg"],
-  });
+  const base = { orgId, tipe_rl, periode };
+
+  const [latest, lastSuccess] = await Promise.all([
+    // percobaan sync terakhir, apa pun statusnya
+    syncLog.findOne({
+      where: base,
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+      attributes: ["id", "status", "error_msg", "createdAt"],
+    }),
+    // sync sukses terakhir (untuk "Terakhir Sync")
+    syncLog.findOne({
+      where: { ...base, status: "success" },
+      order: [["synced_at", "DESC"]],
+      attributes: ["synced_at", "total_data"],
+    }),
+  ]);
+
+  return { latest, lastSuccess };
 };
 
 const chunkArray = (array, size) => {
